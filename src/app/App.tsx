@@ -6089,189 +6089,282 @@ function FullscreenModern(props: FullscreenSharedProps) {
 }
 
 function FullscreenClassic(props: FullscreenSharedProps) {
-  const { project, track, player, onTogglePlay, onSeek, onVolume, onPrev, onNext, onShuffle, onClose, accentColor, liked, toggleLike } = props;
+  const { project, track, player, onTogglePlay, onSeek, onVolume, onPrev, onNext, onShuffle, onClose, liked, toggleLike } = props;
   const hasCover = !!project.coverDataUrl;
   const progress = player.duration > 0 ? player.currentTime / player.duration : 0;
-  const BLUE = "#1a6cd8", LBLUE = "#4a9aff", DIM = "rgba(160,180,220,0.6)";
+  const CYAN = "#00c8ff", BLUE = "#1e8fef", DEEP = "#0a4fb0";
 
-  // XP Luna button style
-  const xpBtn = (active?: boolean, danger?: boolean): React.CSSProperties => ({
-    background: danger
-      ? "linear-gradient(180deg,#e05050 0%,#b03030 100%)"
-      : active
-        ? "linear-gradient(180deg,#5a9ef0 0%,#2878e0 40%,#1260c8 100%)"
-        : "linear-gradient(180deg,#2e3050 0%,#1e2040 100%)",
-    border: `1px solid ${danger ? "#803030" : active ? "#0a48a0" : "rgba(80,100,200,0.4)"}`,
-    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.2), 0 1px 3px rgba(0,0,0,0.6)",
-    color: "#fff",
-    cursor: "pointer",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontFamily: "'Segoe UI',Tahoma,system-ui,sans-serif",
-    fontWeight: 600,
-    letterSpacing: "0.01em",
-    transition: "all 0.1s ease",
-  });
+  // Aero glossy orb button
+  const AeroOrb = ({ onClick, children, primary, active, disabled, size = 44 }: { onClick?:()=>void; children:React.ReactNode; primary?:boolean; active?:boolean; disabled?:boolean; size?:number }) => (
+    <button onClick={onClick} disabled={disabled} style={{
+      width: size, height: size, borderRadius: size/2,
+      background: primary
+        ? `radial-gradient(circle at 50% 20%, rgba(255,255,255,0.95) 0%, rgba(180,240,255,0.95) 22%, ${CYAN} 50%, ${BLUE} 78%, #0b5cb8 100%)`
+        : active
+          ? `linear-gradient(180deg, rgba(200,240,255,0.9) 0%, ${CYAN} 50%, ${BLUE} 100%)`
+          : `linear-gradient(180deg, rgba(220,240,255,0.55) 0%, rgba(140,190,240,0.3) 48%, rgba(50,110,200,0.35) 50%, rgba(20,70,170,0.5) 100%)`,
+      border: `1px solid ${primary || active ? "rgba(0,50,130,0.9)" : "rgba(180,225,255,0.55)"}`,
+      boxShadow: primary
+        ? `inset 0 1px 0 rgba(255,255,255,1), inset 0 -4px 8px rgba(0,40,100,0.55), 0 0 20px rgba(0,180,255,0.7), 0 4px 12px rgba(0,40,120,0.65), 0 0 0 3px rgba(0,180,255,0.15)`
+        : active
+          ? `inset 0 1px 0 rgba(255,255,255,0.75), 0 0 14px rgba(0,180,255,0.55), 0 3px 8px rgba(0,40,120,0.5)`
+          : `inset 0 1px 0 rgba(255,255,255,0.4), inset 0 -1px 0 rgba(0,20,60,0.35), 0 2px 5px rgba(0,20,60,0.5)`,
+      color: primary || active ? "#fff" : "rgba(230,244,255,0.94)",
+      cursor: disabled ? "default" : "pointer",
+      display: "flex", alignItems: "center", justifyContent: "center",
+      opacity: disabled ? 0.3 : 1,
+      position: "relative", overflow: "hidden",
+      transition: "filter 0.15s ease, transform 0.1s ease, box-shadow 0.25s ease",
+    }}
+    onMouseEnter={e => { if (!disabled) e.currentTarget.style.filter = "brightness(1.15) saturate(1.1)"; }}
+    onMouseLeave={e => { e.currentTarget.style.filter = "brightness(1)"; }}
+    >
+      <span style={{ position: "absolute", top: 1, left: 1, right: 1, height: "50%", borderRadius: `${size/2}px ${size/2}px 50% 50% / ${size/2}px ${size/2}px 100% 100%`, background: "linear-gradient(180deg, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.08) 100%)", pointerEvents: "none" }} />
+      <span style={{ position: "relative", display: "flex", filter: "drop-shadow(0 1px 1px rgba(0,20,60,0.5))" }}>{children}</span>
+    </button>
+  );
 
   return (
     <div className="fixed inset-0 z-[200] flex flex-col overflow-hidden"
-      style={{ background: "#06060e", fontFamily: "'Segoe UI',Tahoma,system-ui,sans-serif" }}>
+      style={{
+        background: `radial-gradient(ellipse at 30% 110%, rgba(0,180,255,0.35) 0%, transparent 55%),
+                     radial-gradient(ellipse at 80% -10%, rgba(120,220,255,0.28) 0%, transparent 50%),
+                     linear-gradient(180deg, #041832 0%, #062a5e 40%, #0a4098 100%)`,
+        fontFamily: "'Segoe UI',Tahoma,system-ui,sans-serif",
+      }}>
 
-      {/* Animated PS3 wave background */}
-      <div className="absolute inset-0 pointer-events-none" style={{
-        background: "radial-gradient(ellipse at 30% 70%, rgba(10,40,180,0.22) 0%, transparent 55%), radial-gradient(ellipse at 70% 30%, rgba(20,60,200,0.15) 0%, transparent 45%)",
-      }} />
-      {/* Scan line */}
-      <div className="absolute left-0 right-0 pointer-events-none" style={{
-        height: 120, background: "linear-gradient(transparent, rgba(26,108,216,0.06), transparent)",
-        animation: "ps3Scan 5s linear infinite", zIndex: 1,
-      }} />
       <style>{`
-        @keyframes ps3Scan { from { top: -120px; } to { top: 110%; } }
-        @keyframes xpGlowPulse { 0%,100%{box-shadow:0 0 12px rgba(26,108,216,0.5);} 50%{box-shadow:0 0 28px rgba(26,108,216,0.8), 0 0 48px rgba(26,108,216,0.3);} }
-        @keyframes eqPulse { 0%,100%{height:15%;} 50%{height:100%;} }
+        @keyframes aeroFsBubble {
+          0%   { transform: translateY(0) translateX(0) scale(1); opacity: 0.6; }
+          50%  { transform: translateY(-55vh) translateX(30px) scale(1.15); opacity: 0.9; }
+          100% { transform: translateY(-115vh) translateX(-15px) scale(0.85); opacity: 0; }
+        }
+        @keyframes aeroFsGlow {
+          0%,100% { box-shadow: 0 0 40px rgba(0,180,255,0.5), 0 0 80px rgba(0,180,255,0.25), inset 0 2px 0 rgba(255,255,255,0.4); }
+          50%     { box-shadow: 0 0 60px rgba(0,180,255,0.75), 0 0 120px rgba(0,180,255,0.4), inset 0 2px 0 rgba(255,255,255,0.5); }
+        }
       `}</style>
 
-      {/* XP-style title bar */}
-      <div className="shrink-0 flex items-center justify-between px-3 py-1.5 relative z-10"
-        style={{ background: "linear-gradient(180deg,#3a7ae8 0%,#1a60d0 40%,#1050b8 100%)", borderBottom: "2px solid #0a3a90", boxShadow: "0 3px 12px rgba(0,0,0,0.6)" }}>
-        <div className="flex items-center gap-2">
-          {/* XP traffic lights */}
-          {[["#e04040","#a02020"],["#e0a020","#a07010"],["#40c040","#208820"]].map(([bg,border],i) => (
-            <div key={i} style={{ width: 14, height: 14, borderRadius: 7, background: `radial-gradient(circle at 35% 35%, ${bg} 0%, ${border} 100%)`, border: `1px solid ${border}`, boxShadow: `inset 0 1px 0 rgba(255,255,255,0.4)` }} />
-          ))}
-          <span style={{ fontSize: 12, fontWeight: 700, color: "#fff", textShadow: "0 1px 2px rgba(0,0,0,0.6)", marginLeft: 4 }}>
+      {/* Rising bubbles */}
+      <div className="absolute inset-x-0 pointer-events-none" style={{
+        bottom: "-20vh", height: "140vh",
+        backgroundImage:
+          "radial-gradient(circle at 15% 90%, rgba(200,240,255,0.42) 0 8px, transparent 9px)," +
+          "radial-gradient(circle at 82% 70%, rgba(210,245,255,0.35) 0 5px, transparent 6px)," +
+          "radial-gradient(circle at 45% 50%, rgba(170,225,255,0.30) 0 12px, transparent 13px)," +
+          "radial-gradient(circle at 70% 20%, rgba(220,250,255,0.35) 0 6px, transparent 7px)," +
+          "radial-gradient(circle at 25% 30%, rgba(180,235,255,0.25) 0 9px, transparent 10px)," +
+          "radial-gradient(circle at 90% 40%, rgba(210,245,255,0.28) 0 4px, transparent 5px)," +
+          "radial-gradient(circle at 55% 85%, rgba(160,225,255,0.32) 0 10px, transparent 11px)",
+        animation: "aeroFsBubble 26s linear infinite",
+      }} />
+      <div className="absolute inset-x-0 pointer-events-none" style={{
+        bottom: "-20vh", height: "140vh",
+        backgroundImage:
+          "radial-gradient(circle at 35% 60%, rgba(200,240,255,0.30) 0 6px, transparent 7px)," +
+          "radial-gradient(circle at 65% 40%, rgba(170,225,255,0.28) 0 10px, transparent 11px)," +
+          "radial-gradient(circle at 10% 20%, rgba(220,250,255,0.30) 0 4px, transparent 5px)",
+        animation: "aeroFsBubble 38s linear infinite -14s",
+        opacity: 0.65,
+      }} />
+
+      {/* Aero window title bar */}
+      <div className="shrink-0 flex items-center justify-between px-3 py-2 relative z-10"
+        style={{
+          background: "linear-gradient(180deg, rgba(160,220,255,0.55) 0%, rgba(30,120,220,0.60) 50%, rgba(10,70,170,0.75) 100%)",
+          backdropFilter: "blur(24px) saturate(200%)",
+          WebkitBackdropFilter: "blur(24px) saturate(200%)",
+          borderBottom: "1px solid rgba(200,235,255,0.45)",
+          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.5), 0 4px 20px rgba(0,20,60,0.5)",
+          overflow: "hidden",
+        }}>
+        <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "50%", background: "linear-gradient(180deg, rgba(255,255,255,0.35) 0%, transparent 100%)", pointerEvents: "none" }} />
+        <div className="flex items-center gap-2 relative">
+          <div style={{ width: 16, height: 16, borderRadius: 8, background: "radial-gradient(circle at 40% 30%, #fff 0%, #7cd6ff 30%, #0080e0 100%)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.6), 0 0 6px rgba(0,180,255,0.6)" }} />
+          <span style={{ fontSize: 13, fontWeight: 600, color: "#fff", textShadow: "0 1px 2px rgba(0,20,60,0.7)", letterSpacing: "0.01em" }}>
             Melodia — Now Playing
           </span>
         </div>
-        <div className="flex items-center gap-1">
-          {["—","□"].map((s,i) => (
-            <button key={i} style={{ ...xpBtn(), width: 20, height: 18, fontSize: 11 }}>{s}</button>
+        <div className="flex items-center gap-1.5 relative">
+          {["—","▢"].map((s,i) => (
+            <button key={i} style={{
+              width: 26, height: 22, borderRadius: 4,
+              background: "linear-gradient(180deg, rgba(220,240,255,0.5) 0%, rgba(80,150,220,0.3) 100%)",
+              border: "1px solid rgba(180,225,255,0.5)",
+              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.5)",
+              color: "#fff", fontSize: 11, cursor: "pointer",
+            }}>{s}</button>
           ))}
-          <button onClick={onClose} style={{ ...xpBtn(false, true), width: 20, height: 18, fontSize: 11, fontWeight: 900 }}>✕</button>
+          <button onClick={onClose} style={{
+            width: 28, height: 22, borderRadius: 4,
+            background: "linear-gradient(180deg, #ff8080 0%, #e04040 50%, #a02020 100%)",
+            border: "1px solid rgba(120,20,20,0.9)",
+            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.4), 0 0 8px rgba(255,80,80,0.4)",
+            color: "#fff", fontSize: 11, fontWeight: 900, cursor: "pointer",
+            textShadow: "0 1px 1px rgba(0,0,0,0.5)",
+          }}>✕</button>
         </div>
       </div>
 
-      {/* Menubar */}
-      <div className="shrink-0 flex items-center px-3 gap-1 relative z-10" style={{ height: 24, background: "rgba(10,12,30,0.95)", borderBottom: "1px solid rgba(60,100,200,0.2)" }}>
-        {["Music", "View", "Controls", "Help"].map(m => (
-          <button key={m} style={{ fontSize: 11, color: DIM, background: "transparent", border: "none", cursor: "pointer", padding: "2px 8px", fontFamily: "inherit" }}
-            onMouseEnter={e => (e.currentTarget.style.background = "rgba(26,108,216,0.3)")}
-            onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
-            {m}
-          </button>
-        ))}
-      </div>
-
-      {/* Main content area */}
+      {/* Main content */}
       <div className="flex-1 flex overflow-hidden relative z-10" style={{ minHeight: 0 }}>
 
-        {/* LEFT: Album art + EQ */}
-        <div className="flex flex-col items-center justify-center shrink-0 gap-4 px-8"
-          style={{ width: 300, borderRight: "1px solid rgba(60,100,200,0.15)", background: "rgba(6,6,18,0.5)" }}>
-          {/* Album art with XP inset frame */}
+        {/* LEFT: Album art with Aero orb glow */}
+        <div className="flex flex-col items-center justify-center shrink-0 gap-6 px-10"
+          style={{ width: 380, borderRight: "1px solid rgba(180,225,255,0.15)" }}>
           <div style={{
-            width: 220, height: 220, position: "relative",
-            border: "3px solid rgba(60,100,200,0.3)",
-            borderTop: "3px solid rgba(80,140,255,0.5)",
-            boxShadow: `0 0 32px rgba(26,108,216,0.3), inset 0 0 0 1px rgba(80,140,255,0.1), 0 8px 32px rgba(0,0,0,0.7)`,
-            animation: "xpGlowPulse 3s ease-in-out infinite",
+            width: 260, height: 260, position: "relative",
+            borderRadius: 16,
+            border: "1px solid rgba(200,240,255,0.55)",
+            animation: "aeroFsGlow 3.5s ease-in-out infinite",
             overflow: "hidden",
           }}>
             {hasCover
-              ? <img src={project.coverDataUrl!} alt={project.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-              : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(10,14,40,0.9)" }}>
-                  <Music size={72} style={{ color: LBLUE, opacity: 0.4 }} />
+              ? <img src={project.coverDataUrl!} alt={project.name} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+              : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: `linear-gradient(180deg,#1a5fbe 0%,#062a70 100%)` }}>
+                  <Music size={84} style={{ color: "#c8ecff", opacity: 0.65 }} />
                 </div>}
-            {/* Glossy sheen */}
-            <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "45%", background: "linear-gradient(180deg,rgba(255,255,255,0.08) 0%,transparent 100%)", pointerEvents: "none" }} />
+            {/* Aero glossy sheen */}
+            <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "48%", background: "linear-gradient(180deg, rgba(255,255,255,0.32) 0%, rgba(255,255,255,0.06) 60%, transparent 100%)", borderRadius: "16px 16px 45% 45% / 16px 16px 100% 100%", pointerEvents: "none" }} />
+            {/* Inner rim */}
+            <div style={{ position: "absolute", inset: 0, borderRadius: 16, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.5), inset 0 -1px 0 rgba(0,30,80,0.4)", pointerEvents: "none" }} />
           </div>
 
-          {/* Equalizer bars — PS3 style */}
-          <div style={{ display: "flex", gap: 3, alignItems: "flex-end", height: 36, width: 220 }}>
-            {Array.from({ length: 28 }, (_, i) => {
-              const h = player.isPlaying ? `${10 + Math.abs(Math.sin(Date.now() / 250 + i * 0.8)) * 90}%` : "8%";
-              return <div key={i} style={{ flex: 1, background: `linear-gradient(180deg,${LBLUE} 0%,${BLUE} 100%)`, minHeight: 3, height: h, opacity: 0.7 + (i % 3) * 0.1, transition: "height 0.1s ease", borderRadius: "1px 1px 0 0" }} />;
+          {/* Aero EQ visualizer */}
+          <div style={{ display: "flex", gap: 3, alignItems: "flex-end", height: 42, width: 260 }}>
+            {Array.from({ length: 32 }, (_, i) => {
+              const h = player.isPlaying ? `${8 + Math.abs(Math.sin(Date.now() / 220 + i * 0.7)) * 92}%` : "6%";
+              return <div key={i} style={{
+                flex: 1, minHeight: 3, height: h,
+                background: `linear-gradient(180deg, #fff 0%, ${CYAN} 40%, ${BLUE} 80%, ${DEEP} 100%)`,
+                borderRadius: "2px 2px 1px 1px",
+                boxShadow: `0 0 6px ${CYAN}, inset 0 1px 0 rgba(255,255,255,0.6)`,
+                transition: "height 0.08s ease",
+              }} />;
             })}
           </div>
         </div>
 
-        {/* RIGHT: Track info + controls */}
-        <div className="flex-1 flex flex-col justify-center px-10 gap-6" style={{ minWidth: 0, background: "rgba(4,4,14,0.4)" }}>
+        {/* RIGHT: info + controls */}
+        <div className="flex-1 flex flex-col justify-center px-12 gap-8" style={{ minWidth: 0 }}>
 
-          {/* Track info — XP info panel style */}
-          <div style={{ border: "1px solid rgba(60,100,200,0.25)", borderTop: `3px solid ${BLUE}`, background: "rgba(8,8,24,0.8)", padding: "16px 20px", boxShadow: "inset 0 0 20px rgba(0,0,0,0.4)" }}>
-            <div style={{ fontSize: 11, color: LBLUE, letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: 8 }}>Now Playing</div>
-            <div style={{ fontSize: 24, fontWeight: 700, color: "#fff", lineHeight: 1.2, marginBottom: 4, textShadow: "0 0 20px rgba(80,140,255,0.3)" }}>{track.name}</div>
-            <div style={{ fontSize: 14, color: LBLUE, marginBottom: 3 }}>{project.artist || "Unknown Artist"}</div>
-            <div style={{ fontSize: 11, color: DIM }}>{project.isSingle ? "Single" : project.name}</div>
-            {/* Like button */}
-            {toggleLike && (
-              <button onClick={() => toggleLike(project.id, track.id)} style={{ ...xpBtn(liked), marginTop: 12, padding: "4px 14px", borderRadius: 3, fontSize: 11, gap: 4, display: "flex", alignItems: "center" }}>
-                <Heart size={12} fill={liked ? "currentColor" : "none"} strokeWidth={liked ? 0 : 1.5} />
-                {liked ? "Liked" : "Like"}
-              </button>
-            )}
+          {/* Track info — Aero glass panel */}
+          <div style={{
+            borderRadius: 12,
+            border: "1px solid rgba(200,240,255,0.4)",
+            borderTop: "1px solid rgba(220,245,255,0.65)",
+            background: "linear-gradient(180deg, rgba(180,220,255,0.18) 0%, rgba(30,80,160,0.28) 100%)",
+            backdropFilter: "blur(28px) saturate(180%)",
+            WebkitBackdropFilter: "blur(28px) saturate(180%)",
+            padding: "22px 26px",
+            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.4), 0 8px 28px rgba(0,20,60,0.5)",
+            position: "relative", overflow: "hidden",
+          }}>
+            <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "42%", background: "linear-gradient(180deg, rgba(255,255,255,0.22) 0%, transparent 100%)", pointerEvents: "none" }} />
+            <div style={{ position: "relative" }}>
+              <div style={{ fontSize: 11, color: "#a8dcff", letterSpacing: "0.22em", textTransform: "uppercase", marginBottom: 10, fontWeight: 600 }}>Now Playing</div>
+              <div style={{ fontSize: 30, fontWeight: 700, color: "#fff", lineHeight: 1.15, marginBottom: 6, textShadow: "0 2px 8px rgba(0,20,60,0.5), 0 0 24px rgba(0,180,255,0.35)", letterSpacing: "-0.01em" }}>{track.name}</div>
+              <div style={{ fontSize: 15, color: "#c8ecff", marginBottom: 4, textShadow: "0 1px 2px rgba(0,20,60,0.4)" }}>{project.artist || "Unknown Artist"}</div>
+              <div style={{ fontSize: 12, color: "rgba(200,225,255,0.7)" }}>{project.isSingle ? "Single" : project.name}</div>
+              {toggleLike && (
+                <button onClick={() => toggleLike(project.id, track.id)} style={{
+                  marginTop: 16, padding: "6px 16px", borderRadius: 16,
+                  background: liked
+                    ? `linear-gradient(180deg, #ff9ec0 0%, #e94a8d 50%, #b02068 100%)`
+                    : `linear-gradient(180deg, rgba(220,240,255,0.5) 0%, rgba(80,150,220,0.35) 50%, rgba(30,90,180,0.4) 100%)`,
+                  border: `1px solid ${liked ? "rgba(120,20,60,0.85)" : "rgba(180,225,255,0.55)"}`,
+                  boxShadow: `inset 0 1px 0 rgba(255,255,255,0.55), 0 2px 6px rgba(0,20,60,0.5), 0 0 12px ${liked ? "rgba(233,74,141,0.5)" : "rgba(0,180,255,0.3)"}`,
+                  color: "#fff", fontSize: 12, fontWeight: 600,
+                  display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer",
+                  textShadow: "0 1px 1px rgba(0,20,60,0.5)",
+                }}>
+                  <Heart size={13} fill={liked ? "currentColor" : "none"} strokeWidth={liked ? 0 : 2} />
+                  {liked ? "Liked" : "Like"}
+                </button>
+              )}
+            </div>
           </div>
 
-          {/* Progress — XP progress bar with PS3 glow */}
+          {/* Progress — Aero glass scrubber */}
           <div>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: DIM, marginBottom: 6, fontVariantNumeric: "tabular-nums" }}>
-              <span style={{ color: LBLUE }}>{fmt(player.currentTime)}</span>
-              <span>{fmt(player.duration)}</span>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#a8dcff", marginBottom: 8, fontVariantNumeric: "tabular-nums" }}>
+              <span>{fmt(player.currentTime)}</span>
+              <span style={{ color: "rgba(200,225,255,0.55)" }}>{fmt(player.duration)}</span>
             </div>
-            <div style={{ height: 18, background: "rgba(4,6,20,0.9)", border: "1px solid rgba(60,100,200,0.25)", borderTop: "1px solid rgba(40,80,180,0.4)", boxShadow: "inset 0 1px 4px rgba(0,0,0,0.5)", cursor: "pointer", position: "relative", borderRadius: 2 }}
+            <div style={{
+              height: 20, borderRadius: 10,
+              background: "linear-gradient(180deg, rgba(0,10,40,0.85) 0%, rgba(0,20,60,0.6) 100%)",
+              border: "1px solid rgba(180,225,255,0.35)",
+              boxShadow: "inset 0 2px 5px rgba(0,10,40,0.65), inset 0 -1px 0 rgba(255,255,255,0.1)",
+              cursor: "pointer", position: "relative", overflow: "hidden",
+            }}
               onClick={e => { const r = e.currentTarget.getBoundingClientRect(); onSeek(((e.clientX - r.left) / r.width) * player.duration); }}>
-              <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${progress * 100}%`, background: `linear-gradient(180deg,${LBLUE} 0%,${BLUE} 50%,rgba(10,50,160,0.9) 100%)`, boxShadow: `0 0 8px ${BLUE}`, transition: "width 0.1s linear", borderRadius: 2 }}>
-                <div style={{ position: "absolute", inset: 0, top: 0, height: "50%", background: "rgba(255,255,255,0.2)", borderRadius: "2px 2px 0 0" }} />
-                <div style={{ position: "absolute", right: 0, top: "50%", transform: "translateY(-50%)", width: 8, height: 14, background: "rgba(255,255,255,0.9)", borderRadius: 1 }} />
+              <div style={{
+                position: "absolute", left: 0, top: 0, bottom: 0,
+                width: `${progress * 100}%`,
+                background: `linear-gradient(180deg, rgba(220,245,255,0.95) 0%, ${CYAN} 45%, ${BLUE} 100%)`,
+                boxShadow: `0 0 14px ${CYAN}, inset 0 1px 0 rgba(255,255,255,0.7)`,
+                transition: "width 0.1s linear",
+                borderRadius: 10,
+              }}>
+                <div style={{ position: "absolute", top: 1, left: 1, right: 1, height: "48%", background: "linear-gradient(180deg, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.05) 100%)", borderRadius: "9px 9px 50% 50% / 9px 9px 100% 100%" }} />
+                <div style={{ position: "absolute", right: -8, top: "50%", transform: "translateY(-50%)", width: 18, height: 18, borderRadius: "50%", background: `radial-gradient(circle at 35% 25%, #fff 0%, ${CYAN} 55%, ${BLUE} 100%)`, boxShadow: `0 0 12px ${CYAN}, 0 2px 4px rgba(0,20,60,0.5), inset 0 1px 0 rgba(255,255,255,0.8)`, border: "1px solid rgba(0,80,180,0.6)" }} />
               </div>
             </div>
           </div>
 
           {/* Controls */}
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <button onClick={onShuffle} style={{ ...xpBtn(player.shuffle), padding: "6px 14px", borderRadius: 3, fontSize: 11, gap: 5, display: "flex", alignItems: "center" }}>
-              <Shuffle size={13} /><span>Shuffle</span>
-            </button>
-            <button onClick={onPrev} disabled={player.queuePos === 0 && !player.shuffle} style={{ ...xpBtn(), padding: "8px 18px", borderRadius: 3, fontSize: 11, gap: 5, display: "flex", alignItems: "center", opacity: player.queuePos === 0 && !player.shuffle ? 0.35 : 1 }}>
-              <SkipBack size={16} fill="currentColor" strokeWidth={0} />
-            </button>
-            <button onClick={onTogglePlay} style={{ ...xpBtn(true), padding: "10px 24px", borderRadius: 4, fontSize: 13, gap: 6, display: "flex", alignItems: "center", boxShadow: `inset 0 1px 0 rgba(255,255,255,0.25), 0 0 20px rgba(26,108,216,0.4), 0 2px 6px rgba(0,0,0,0.6)` }}>
-              {player.isPlaying ? <Pause size={20} fill="currentColor" strokeWidth={0} /> : <Play size={20} fill="currentColor" strokeWidth={0} />}
-            </button>
-            <button onClick={onNext} style={{ ...xpBtn(), padding: "8px 18px", borderRadius: 3, display: "flex", alignItems: "center" }}>
-              <SkipForward size={16} fill="currentColor" strokeWidth={0} />
-            </button>
+          <div style={{ display: "flex", gap: 12, alignItems: "center", justifyContent: "center" }}>
+            <AeroOrb onClick={onShuffle} active={player.shuffle} size={38}><Shuffle size={15} /></AeroOrb>
+            <AeroOrb onClick={onPrev} disabled={player.queuePos === 0 && !player.shuffle} size={46}><SkipBack size={20} fill="currentColor" strokeWidth={0} /></AeroOrb>
+            <AeroOrb onClick={onTogglePlay} primary size={64}>
+              {player.isPlaying ? <Pause size={26} fill="currentColor" strokeWidth={0} /> : <Play size={26} fill="currentColor" strokeWidth={0} style={{ marginLeft: 3 }} />}
+            </AeroOrb>
+            <AeroOrb onClick={onNext} size={46}><SkipForward size={20} fill="currentColor" strokeWidth={0} /></AeroOrb>
+            <AeroOrb size={38}><Volume2 size={15} /></AeroOrb>
           </div>
 
           {/* Volume */}
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <button onClick={() => onVolume(player.volume === 0 ? 0.5 : 0)} style={{ color: DIM, background: "transparent", border: "none", cursor: "pointer" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <button onClick={() => onVolume(player.volume === 0 ? 0.5 : 0)} style={{ color: "#a8dcff", background: "transparent", border: "none", cursor: "pointer" }}>
               {player.volume === 0 ? <VolumeX size={16} /> : <Volume2 size={16} />}
             </button>
-            <input type="range" min={0} max={1} step={0.01} value={player.volume} onChange={e => onVolume(Number(e.target.value))} style={{ flex: 1, accentColor: BLUE, cursor: "pointer" }} />
-            <span style={{ fontSize: 11, color: DIM, minWidth: 32, fontVariantNumeric: "tabular-nums" }}>{Math.round(player.volume * 100)}%</span>
+            <input type="range" min={0} max={1} step={0.01} value={player.volume} onChange={e => onVolume(Number(e.target.value))} style={{ flex: 1, accentColor: CYAN, cursor: "pointer" }} />
+            <span style={{ fontSize: 12, color: "#a8dcff", minWidth: 36, fontVariantNumeric: "tabular-nums" }}>{Math.round(player.volume * 100)}%</span>
           </div>
         </div>
       </div>
 
-      {/* XP status bar */}
-      <div className="shrink-0 flex items-center gap-6 px-4 relative z-10"
-        style={{ height: 22, background: "rgba(6,8,22,0.98)", borderTop: "1px solid rgba(60,100,200,0.2)" }}>
+      {/* Aero status bar */}
+      <div className="shrink-0 flex items-center gap-6 px-5 relative z-10"
+        style={{
+          height: 28,
+          background: "linear-gradient(180deg, rgba(20,60,140,0.55) 0%, rgba(6,25,80,0.85) 100%)",
+          backdropFilter: "blur(20px)",
+          WebkitBackdropFilter: "blur(20px)",
+          borderTop: "1px solid rgba(180,225,255,0.3)",
+          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.15)",
+        }}>
         {[
           player.isPlaying ? "▶ Playing" : "⏸ Paused",
-          `Vol: ${Math.round(player.volume * 100)}%`,
+          `Volume: ${Math.round(player.volume * 100)}%`,
           player.shuffle ? "Shuffle: On" : "Shuffle: Off",
           `Queue: ${player.queue.length}`,
         ].map((s, i, arr) => (
-          <span key={i} style={{ fontSize: 10, color: DIM, paddingRight: i < arr.length - 1 ? 12 : 0, borderRight: i < arr.length - 1 ? "1px solid rgba(60,100,200,0.2)" : "none", marginRight: i < arr.length - 1 ? 12 : 0 }}>{s}</span>
+          <span key={i} style={{
+            fontSize: 11, color: "#c8ecff", letterSpacing: "0.04em",
+            paddingRight: i < arr.length - 1 ? 14 : 0,
+            borderRight: i < arr.length - 1 ? "1px solid rgba(180,225,255,0.2)" : "none",
+            marginRight: i < arr.length - 1 ? 14 : 0,
+            textShadow: "0 1px 1px rgba(0,20,60,0.5)",
+          }}>{s}</span>
         ))}
       </div>
     </div>
   );
 }
+
+
 
 function FullscreenUnique(props: FullscreenSharedProps) {
   const { project, track, player, onTogglePlay, onSeek, onVolume, onPrev, onNext, onShuffle, onClose, accentColor, liked, toggleLike } = props;
