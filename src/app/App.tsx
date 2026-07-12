@@ -401,328 +401,582 @@ const LAYOUT_THEME_CSS: Record<LayoutTheme, string> = {
   `,
 
   modern: `
-    /* Apple Liquid Glass */
-    :root { --radius: 1.5rem; }
-    .bg-background { background: #020208 !important; }
+    /* ══════════════════════════════════════════════════════════════
+       LIQUID GLASS — iOS 26 / visionOS refractive glass
+    ══════════════════════════════════════════════════════════════ */
+    :root { --radius: 1.75rem; }
+
+    @keyframes lgFloat {
+      0%,100% { transform: translate3d(0,0,0) scale(1); }
+      50%     { transform: translate3d(2%,-1%,0) scale(1.05); }
+    }
+    @keyframes lgShimmer {
+      0%   { background-position: 0% 50%; }
+      100% { background-position: 200% 50%; }
+    }
+
+    /* Ambient chromatic aurora — visible in dark mode, dialed way back in light */
+    body {
+      position: relative;
+    }
+    body::before {
+      content: '';
+      position: fixed; inset: -20%;
+      pointer-events: none; z-index: 0;
+      background:
+        radial-gradient(40% 55% at 12% 18%, color-mix(in srgb,var(--primary) 32%,transparent) 0%, transparent 70%),
+        radial-gradient(35% 50% at 88% 82%, rgba(120,180,255,0.25) 0%, transparent 70%),
+        radial-gradient(45% 45% at 60% 5%,  rgba(255,140,220,0.18) 0%, transparent 70%),
+        radial-gradient(50% 40% at 5% 95%,  rgba(120,255,220,0.14) 0%, transparent 70%);
+      filter: blur(80px) saturate(140%);
+      animation: lgFloat 24s ease-in-out infinite;
+    }
+    [data-mode="light"] body::before {
+      opacity: 0.55;
+      filter: blur(90px) saturate(120%);
+    }
+
+    .bg-background {
+      background: transparent !important;
+    }
+    :root { background: #030308; }
+    [data-mode="light"]:root { background: #eef1f6; }
+
+    /* Core glass surface */
     .bg-card {
-      background: rgba(255,255,255,0.055) !important;
-      backdrop-filter: blur(48px) saturate(200%) brightness(1.08) !important;
-      -webkit-backdrop-filter: blur(48px) saturate(200%) brightness(1.08) !important;
-      border: 1px solid rgba(255,255,255,0.14) !important;
-      box-shadow: 0 8px 40px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.12) !important;
+      background: color-mix(in srgb, var(--card) 42%, transparent) !important;
+      backdrop-filter: blur(56px) saturate(220%) brightness(1.06) !important;
+      -webkit-backdrop-filter: blur(56px) saturate(220%) brightness(1.06) !important;
+      border: 1px solid color-mix(in srgb, var(--foreground) 12%, transparent) !important;
+      box-shadow:
+        0 1px 0 0 color-mix(in srgb, var(--foreground) 18%, transparent) inset,
+        0 -1px 0 0 color-mix(in srgb, var(--background) 40%, transparent) inset,
+        0 20px 60px -20px rgba(0,0,0,0.55),
+        0 8px 24px -12px rgba(0,0,0,0.4) !important;
+      position: relative !important;
     }
+    /* Specular sheen along the top edge — signature liquid-glass tell */
+    .bg-card::before {
+      content: '';
+      position: absolute; inset: 0;
+      border-radius: inherit;
+      pointer-events: none;
+      background: linear-gradient(180deg,
+        color-mix(in srgb, var(--foreground) 14%, transparent) 0%,
+        transparent 22%,
+        transparent 78%,
+        color-mix(in srgb, var(--background) 30%, transparent) 100%);
+      mix-blend-mode: overlay;
+      opacity: 0.9;
+    }
+    [data-mode="light"] .bg-card {
+      background: rgba(255,255,255,0.55) !important;
+      border-color: rgba(255,255,255,0.9) !important;
+      box-shadow:
+        0 1px 0 0 rgba(255,255,255,0.9) inset,
+        0 -1px 0 0 rgba(0,0,0,0.05) inset,
+        0 22px 60px -24px rgba(30,50,90,0.25),
+        0 10px 24px -14px rgba(30,50,90,0.18) !important;
+    }
+
     .bg-popover, [class*="bg-popover"] {
-      background: rgba(10,10,20,0.76) !important;
-      backdrop-filter: blur(72px) saturate(240%) !important;
-      -webkit-backdrop-filter: blur(72px) saturate(240%) !important;
-      border: 1px solid rgba(255,255,255,0.12) !important;
-      box-shadow: 0 32px 80px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.1) !important;
+      background: color-mix(in srgb, var(--popover) 55%, transparent) !important;
+      backdrop-filter: blur(88px) saturate(260%) !important;
+      -webkit-backdrop-filter: blur(88px) saturate(260%) !important;
+      border: 1px solid color-mix(in srgb, var(--foreground) 14%, transparent) !important;
+      box-shadow:
+        0 1px 0 color-mix(in srgb, var(--foreground) 20%, transparent) inset,
+        0 40px 100px -20px rgba(0,0,0,0.55) !important;
     }
+
     .bg-sidebar {
-      background: rgba(0,0,0,0.5) !important;
-      backdrop-filter: blur(80px) saturate(220%) !important;
-      -webkit-backdrop-filter: blur(80px) saturate(220%) !important;
-      border-right: 1px solid rgba(255,255,255,0.08) !important;
+      background: color-mix(in srgb, var(--sidebar) 40%, transparent) !important;
+      backdrop-filter: blur(96px) saturate(240%) !important;
+      -webkit-backdrop-filter: blur(96px) saturate(240%) !important;
+      border-right: 1px solid color-mix(in srgb, var(--foreground) 10%, transparent) !important;
+      position: relative !important;
     }
-    .bg-secondary { background: rgba(255,255,255,0.06) !important; backdrop-filter: blur(24px) !important; -webkit-backdrop-filter: blur(24px) !important; }
-    .bg-muted { background: rgba(255,255,255,0.04) !important; }
-    .border-border, .divide-border>*+* { border-color: rgba(255,255,255,0.1) !important; }
+    .bg-sidebar::after {
+      content: '';
+      position: absolute; top: 0; right: 0; bottom: 0; width: 1px;
+      background: linear-gradient(180deg, transparent, color-mix(in srgb,var(--foreground) 18%, transparent), transparent);
+      pointer-events: none;
+    }
+
+    .bg-secondary {
+      background: color-mix(in srgb, var(--foreground) 7%, transparent) !important;
+      backdrop-filter: blur(32px) !important;
+      -webkit-backdrop-filter: blur(32px) !important;
+      border: 1px solid color-mix(in srgb, var(--foreground) 10%, transparent) !important;
+    }
+    .bg-muted { background: color-mix(in srgb, var(--foreground) 4%, transparent) !important; }
+    .border-border, .divide-border>*+* { border-color: color-mix(in srgb, var(--foreground) 12%, transparent) !important; }
+
     .sticky {
-      background: rgba(2,2,8,0.5) !important;
-      backdrop-filter: blur(60px) saturate(200%) !important;
-      -webkit-backdrop-filter: blur(60px) saturate(200%) !important;
-      border-bottom: 1px solid rgba(255,255,255,0.07) !important;
+      background: color-mix(in srgb, var(--background) 45%, transparent) !important;
+      backdrop-filter: blur(72px) saturate(220%) !important;
+      -webkit-backdrop-filter: blur(72px) saturate(220%) !important;
+      border-bottom: 1px solid color-mix(in srgb, var(--foreground) 9%, transparent) !important;
     }
+
+    /* Continuous, softer radii — signature */
     .rounded-sm  { border-radius: 0.875rem !important; }
-    .rounded-md  { border-radius: 1.125rem !important; }
-    .rounded-lg  { border-radius: 1.5rem !important; }
-    .rounded-xl  { border-radius: 2rem !important; }
-    .rounded-2xl { border-radius: 2.5rem !important; }
-    .rounded-3xl { border-radius: 3.5rem !important; }
+    .rounded-md  { border-radius: 1.25rem  !important; }
+    .rounded-lg  { border-radius: 1.75rem  !important; }
+    .rounded-xl  { border-radius: 2.25rem  !important; }
+    .rounded-2xl { border-radius: 2.75rem  !important; }
+    .rounded-3xl { border-radius: 3.5rem   !important; }
+
+    /* Primary action = pill of glass with iridescent shimmer */
     .bg-primary:not([class*="bg-primary/"]):not(.text-primary) {
       border-radius: 9999px !important;
-      background: linear-gradient(135deg, color-mix(in srgb,var(--primary) 85%,#fff) 0%, var(--primary) 50%, color-mix(in srgb,var(--primary) 80%,#000) 100%) !important;
-      box-shadow: 0 4px 24px color-mix(in srgb,var(--primary) 50%,transparent), inset 0 1px 0 rgba(255,255,255,0.35) !important;
+      background:
+        linear-gradient(135deg,
+          color-mix(in srgb,var(--primary) 95%,#fff) 0%,
+          var(--primary) 45%,
+          color-mix(in srgb,var(--primary) 82%,#000) 100%) !important;
+      background-size: 200% 100% !important;
+      box-shadow:
+        0 1px 0 rgba(255,255,255,0.5) inset,
+        0 -6px 12px -6px rgba(0,0,0,0.35) inset,
+        0 12px 32px -8px color-mix(in srgb,var(--primary) 55%,transparent),
+        0 4px 12px -4px rgba(0,0,0,0.35) !important;
+      border: 1px solid color-mix(in srgb,var(--primary) 75%,#fff) !important;
+      transition: background-position 0.6s ease, transform 0.15s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.2s ease !important;
     }
-    .bg-primary\/15 { background: rgba(255,255,255,0.1) !important; backdrop-filter: blur(16px) !important; border: 1px solid rgba(255,255,255,0.1) !important; }
-    .hover\\:bg-card:hover { background: rgba(255,255,255,0.08) !important; backdrop-filter: blur(32px) !important; }
-    .hover\\:bg-secondary:hover { background: rgba(255,255,255,0.09) !important; }
-    .shadow-md  { box-shadow: 0 8px 32px rgba(0,0,0,0.5) !important; }
-    .shadow-lg  { box-shadow: 0 16px 48px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.04) !important; }
-    .shadow-xl  { box-shadow: 0 24px 64px rgba(0,0,0,0.65), 0 0 0 1px rgba(255,255,255,0.05) !important; }
-    .shadow-2xl { box-shadow: 0 40px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.06) !important; }
-    ::-webkit-scrollbar { width: 5px; }
+    .bg-primary:not([class*="bg-primary/"]):not(.text-primary):hover {
+      background-position: 100% 50% !important;
+      box-shadow:
+        0 1px 0 rgba(255,255,255,0.6) inset,
+        0 -6px 12px -6px rgba(0,0,0,0.4) inset,
+        0 18px 44px -8px color-mix(in srgb,var(--primary) 70%,transparent),
+        0 6px 16px -4px rgba(0,0,0,0.4) !important;
+    }
+
+    /* Ghost / secondary tinted glass chips */
+    .bg-primary\\/15 {
+      background: color-mix(in srgb, var(--primary) 18%, transparent) !important;
+      backdrop-filter: blur(18px) saturate(180%) !important;
+      -webkit-backdrop-filter: blur(18px) saturate(180%) !important;
+      border: 1px solid color-mix(in srgb, var(--primary) 32%, transparent) !important;
+      box-shadow: 0 1px 0 rgba(255,255,255,0.15) inset, 0 6px 18px -8px color-mix(in srgb,var(--primary) 45%,transparent) !important;
+    }
+    .bg-primary\\/8, .bg-primary\\/10 {
+      background: color-mix(in srgb, var(--primary) 10%, transparent) !important;
+      backdrop-filter: blur(14px) !important;
+      -webkit-backdrop-filter: blur(14px) !important;
+    }
+
+    .hover\\:bg-card:hover     { background: color-mix(in srgb, var(--foreground) 8%, transparent) !important; backdrop-filter: blur(40px) !important; }
+    .hover\\:bg-secondary:hover{ background: color-mix(in srgb, var(--foreground) 10%, transparent) !important; }
+
+    .shadow-md  { box-shadow: 0 10px 30px -12px rgba(0,0,0,0.45) !important; }
+    .shadow-lg  { box-shadow: 0 20px 50px -18px rgba(0,0,0,0.5), 0 0 0 1px color-mix(in srgb,var(--foreground) 8%,transparent) !important; }
+    .shadow-xl  { box-shadow: 0 28px 70px -20px rgba(0,0,0,0.55), 0 0 0 1px color-mix(in srgb,var(--foreground) 9%,transparent) !important; }
+    .shadow-2xl { box-shadow: 0 44px 100px -24px rgba(0,0,0,0.65), 0 0 0 1px color-mix(in srgb,var(--foreground) 10%,transparent) !important; }
+
+    ::-webkit-scrollbar { width: 6px; }
     ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb {
+      background: color-mix(in srgb, var(--foreground) 18%, transparent);
+      border-radius: 9999px;
+      backdrop-filter: blur(8px);
+    }
+    ::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb, var(--foreground) 30%, transparent); }
+
     input:not([type=range]):not([type=color]):not([type=file]) {
-      background: rgba(255,255,255,0.06) !important;
-      backdrop-filter: blur(16px) !important;
-      border: 1px solid rgba(255,255,255,0.12) !important;
-      border-radius: 1.25rem !important;
+      background: color-mix(in srgb, var(--foreground) 6%, transparent) !important;
+      backdrop-filter: blur(20px) saturate(180%) !important;
+      -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+      border: 1px solid color-mix(in srgb, var(--foreground) 12%, transparent) !important;
+      border-radius: 1.5rem !important;
+      box-shadow: 0 1px 0 color-mix(in srgb,var(--foreground) 15%,transparent) inset !important;
     }
     input:not([type=range]):not([type=color]):not([type=file]):focus {
-      border-color: rgba(255,255,255,0.25) !important;
-      box-shadow: 0 0 0 3px rgba(255,255,255,0.08) !important;
+      border-color: color-mix(in srgb, var(--primary) 55%, transparent) !important;
+      box-shadow: 0 0 0 4px color-mix(in srgb,var(--primary) 18%,transparent), 0 1px 0 rgba(255,255,255,0.2) inset !important;
     }
-    h1, h2 { font-weight: 700 !important; letter-spacing: -0.03em !important; }
-    .bg-primary\/8, .bg-primary\/10 { background: rgba(255,255,255,0.06) !important; }
+
+    h1, h2 { font-weight: 700 !important; letter-spacing: -0.035em !important; }
   `,
 
   classic: `
     /* ══════════════════════════════════════════════════════════════
-       WINDOWS XP + PS3 + PS VITA
+       FRUTIGER AERO — Windows 7 Aero glass, straight from 2007-2010
+       Sky, water, bubbles, chrome, and glossy blue orbs
     ══════════════════════════════════════════════════════════════ */
 
-    /* ── Core color system override ── */
     :root {
-      --radius: 4px;
-      --background: #06060e;
-      --foreground: #e8eaf0;
-      --card: #0e0e1e;
-      --card-foreground: #e8eaf0;
-      --popover: #0a0a18;
-      --popover-foreground: #e8eaf0;
-      --primary: #1a6cd8;
-      --primary-foreground: #ffffff;
-      --secondary: #14142a;
-      --secondary-foreground: #a0b4d8;
-      --muted: #0c0c1e;
-      --muted-foreground: rgba(160,180,220,0.6);
-      --border: rgba(60,100,200,0.22);
-      --input-background: #0a0a1a;
-      --sidebar: #09091a;
-      --sidebar-foreground: #e8eaf0;
-      --sidebar-accent: #121228;
-      --sidebar-accent-foreground: #a0b4d8;
-      --sidebar-border: rgba(60,100,200,0.15);
-      --switch-background: #1a1a38;
-      --destructive: #cc2244;
-      --destructive-foreground: #fff;
+      --radius: 6px;
+      --aero-cyan: #00c8ff;
+      --aero-blue: #0a7dd8;
+      --aero-deep: #003a7a;
+      --aero-glow: rgba(0,180,255,0.55);
     }
 
-    /* ── Global font: era-accurate ── */
+    /* Segoe UI — the Frutiger Aero typeface */
     *, *::before, *::after {
-      font-family: 'Segoe UI', Tahoma, 'MS Sans Serif', system-ui, sans-serif !important;
+      font-family: 'Segoe UI', 'Segoe UI Variable', Frutiger, Tahoma, system-ui, sans-serif !important;
     }
 
-    /* ── Era-accurate animations ── */
-    @keyframes xpWindowOpen {
-      0% { opacity: 0; transform: scale(0.92) translateY(4px); }
-      60% { transform: scale(1.02) translateY(-1px); }
-      100% { opacity: 1; transform: scale(1) translateY(0); }
+    /* ── Animations ── */
+    @keyframes aeroBubble {
+      0%   { transform: translateY(0)     translateX(0)   scale(1);   opacity: 0.55; }
+      50%  { transform: translateY(-60vh) translateX(20px) scale(1.15); opacity: 0.8; }
+      100% { transform: translateY(-120vh) translateX(-10px) scale(0.9); opacity: 0; }
     }
-    @keyframes ps3Wave {
-      0%   { background-position: 0% 50%; }
-      50%  { background-position: 100% 50%; }
-      100% { background-position: 0% 50%; }
+    @keyframes aeroShine {
+      0%   { transform: translateX(-120%) skewX(-25deg); }
+      100% { transform: translateX(320%)  skewX(-25deg); }
     }
-    @keyframes xpGlow {
-      0%,100% { box-shadow: 0 0 8px rgba(30,110,220,0.4); }
-      50%      { box-shadow: 0 0 18px rgba(30,110,220,0.7); }
+    @keyframes aeroPulseGlow {
+      0%,100% { box-shadow: 0 0 12px var(--aero-glow), 0 0 24px color-mix(in srgb,var(--aero-cyan) 30%,transparent); }
+      50%     { box-shadow: 0 0 22px var(--aero-glow), 0 0 44px color-mix(in srgb,var(--aero-cyan) 45%,transparent); }
     }
-    @keyframes vistaSlideIn {
-      from { opacity: 0; transform: translateX(16px); }
-      to   { opacity: 1; transform: translateX(0); }
-    }
-    @keyframes ps3Scan {
-      from { transform: translateY(-100%) skewY(-2deg); opacity: 0.4; }
-      to   { transform: translateY(110vh) skewY(-2deg); opacity: 0; }
+    @keyframes aeroWindowOpen {
+      0%   { opacity: 0; transform: scale(0.94) translateY(6px); }
+      100% { opacity: 1; transform: scale(1)    translateY(0); }
     }
 
-    /* ── Background: PS3 deep space + subtle wave ── */
+    /* ── Sky/water background with floating bubbles ── */
     .bg-background {
-      background: #06060e !important;
+      background:
+        radial-gradient(ellipse at 20% 100%, rgba(0,200,255,0.18) 0%, transparent 55%),
+        radial-gradient(ellipse at 85% 15%, rgba(120,220,255,0.14) 0%, transparent 50%),
+        linear-gradient(180deg, #041830 0%, #062248 35%, #0a3468 70%, #0e4088 100%) !important;
+      position: relative !important;
+      overflow-x: hidden !important;
+    }
+    [data-mode="light"] .bg-background {
+      background:
+        radial-gradient(ellipse at 20% 100%, rgba(255,255,255,0.6) 0%, transparent 55%),
+        radial-gradient(ellipse at 85% 15%, rgba(160,220,255,0.5) 0%, transparent 50%),
+        linear-gradient(180deg, #c8e8ff 0%, #96c8ff 40%, #6aa8ee 100%) !important;
+    }
+    /* Rising bubbles */
+    .bg-background::before,
+    .bg-background::after {
+      content: '';
+      position: fixed;
+      left: 0; right: 0; bottom: -20vh;
+      height: 140vh;
+      pointer-events: none;
       background-image:
-        radial-gradient(ellipse at 20% 80%, rgba(10,40,160,0.18) 0%, transparent 55%),
-        radial-gradient(ellipse at 80% 20%, rgba(20,60,180,0.12) 0%, transparent 50%),
-        radial-gradient(ellipse at 50% 50%, rgba(5,15,80,0.3) 0%, transparent 70%) !important;
+        radial-gradient(circle at 15% 90%,  rgba(180,240,255,0.35) 0 6px, transparent 7px),
+        radial-gradient(circle at 82% 70%,  rgba(200,245,255,0.30) 0 4px, transparent 5px),
+        radial-gradient(circle at 45% 50%,  rgba(150,220,255,0.25) 0 9px, transparent 10px),
+        radial-gradient(circle at 70% 20%,  rgba(210,250,255,0.28) 0 5px, transparent 6px),
+        radial-gradient(circle at 25% 30%,  rgba(180,240,255,0.20) 0 7px, transparent 8px),
+        radial-gradient(circle at 90% 40%,  rgba(200,245,255,0.22) 0 3px, transparent 4px),
+        radial-gradient(circle at 55% 85%,  rgba(160,225,255,0.30) 0 8px, transparent 9px);
+      animation: aeroBubble 22s linear infinite;
     }
+    .bg-background::after { animation-duration: 34s; animation-delay: -12s; opacity: 0.6; }
 
-    /* ── Cards: PS Vita / PS3 dark glass panels ── */
+    /* ── Aero Glass cards — the signature translucent frost ── */
     .bg-card {
-      background: linear-gradient(135deg, rgba(16,16,38,0.95) 0%, rgba(10,10,28,0.98) 100%) !important;
-      border: 1px solid rgba(60,100,200,0.18) !important;
-      border-top: 1px solid rgba(80,130,240,0.25) !important;
+      background: linear-gradient(180deg,
+        rgba(180,220,255,0.20) 0%,
+        rgba(120,180,240,0.12) 45%,
+        rgba(80,140,220,0.14) 100%) !important;
+      backdrop-filter: blur(28px) saturate(180%) brightness(1.05) !important;
+      -webkit-backdrop-filter: blur(28px) saturate(180%) brightness(1.05) !important;
+      border: 1px solid rgba(180,225,255,0.35) !important;
+      border-top: 1px solid rgba(220,245,255,0.55) !important;
+      border-radius: 8px !important;
       box-shadow:
-        0 6px 24px rgba(0,0,0,0.6),
-        inset 0 1px 0 rgba(80,140,255,0.1),
-        inset 0 0 0 1px rgba(255,255,255,0.03) !important;
-      animation: xpWindowOpen 0.2s ease-out !important;
+        inset 0 1px 0 rgba(255,255,255,0.35),
+        inset 0 -1px 0 rgba(0,60,120,0.25),
+        0 8px 24px rgba(0,30,80,0.5),
+        0 2px 6px rgba(0,60,120,0.35) !important;
+      position: relative !important;
+      overflow: hidden !important;
+      animation: aeroWindowOpen 0.22s cubic-bezier(0.2,0.9,0.35,1.15) !important;
+    }
+    /* Top glossy sheen on every card */
+    .bg-card::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 42%;
+      background: linear-gradient(180deg,
+        rgba(255,255,255,0.28) 0%,
+        rgba(255,255,255,0.08) 60%,
+        transparent 100%);
+      border-radius: 8px 8px 40% 40% / 8px 8px 100% 100%;
+      pointer-events: none;
+    }
+    [data-mode="light"] .bg-card {
+      background: linear-gradient(180deg,
+        rgba(255,255,255,0.72) 0%,
+        rgba(220,240,255,0.55) 45%,
+        rgba(180,220,250,0.55) 100%) !important;
+      border: 1px solid rgba(255,255,255,0.9) !important;
+      border-top: 1px solid rgba(255,255,255,1) !important;
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,1),
+        inset 0 -1px 0 rgba(80,140,200,0.25),
+        0 8px 22px rgba(30,80,140,0.20),
+        0 2px 6px rgba(30,80,140,0.15) !important;
+    }
+    [data-mode="light"] .bg-card::before {
+      background: linear-gradient(180deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.15) 60%, transparent 100%);
     }
 
-    /* ── Popover: deep modal like XP dialog ── */
+    /* ── Popover / dialog: Aero glass window ── */
     .bg-popover, [class*="bg-popover"] {
-      background: linear-gradient(180deg, #0c0c22 0%, #080818 100%) !important;
-      border: 2px solid rgba(60,110,220,0.35) !important;
-      border-top: 3px solid #1a6cd8 !important;
-      box-shadow: 0 16px 48px rgba(0,0,0,0.8), 0 0 0 1px rgba(80,140,255,0.1) !important;
+      background: linear-gradient(180deg,
+        rgba(30,80,160,0.85) 0%,
+        rgba(10,40,90,0.90) 100%) !important;
+      backdrop-filter: blur(36px) saturate(180%) !important;
+      -webkit-backdrop-filter: blur(36px) saturate(180%) !important;
+      border: 1px solid rgba(180,225,255,0.5) !important;
+      border-top: 1px solid rgba(220,245,255,0.75) !important;
+      border-radius: 8px !important;
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.4),
+        0 20px 60px rgba(0,20,60,0.7),
+        0 0 0 1px rgba(0,180,255,0.15) !important;
+    }
+    [data-mode="light"] .bg-popover, [data-mode="light"] [class*="bg-popover"] {
+      background: linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(220,240,255,0.88) 100%) !important;
+      border: 1px solid rgba(120,180,230,0.55) !important;
+      border-top: 1px solid rgba(255,255,255,1) !important;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,1), 0 20px 60px rgba(30,80,140,0.35) !important;
     }
 
-    /* ── Sidebar: XP Task Panel with Luna gradient ── */
+    /* ── Sidebar: Aero Peek / Vista Sidebar Gadget dock ── */
     .bg-sidebar {
-      background: linear-gradient(180deg, #0d0d24 0%, #080818 100%) !important;
-      border-right: 1px solid rgba(60,100,200,0.2) !important;
-      box-shadow: 3px 0 16px rgba(0,0,0,0.5) !important;
+      background: linear-gradient(180deg,
+        rgba(20,50,100,0.55) 0%,
+        rgba(10,30,70,0.70) 100%) !important;
+      backdrop-filter: blur(40px) saturate(200%) !important;
+      -webkit-backdrop-filter: blur(40px) saturate(200%) !important;
+      border-right: 1px solid rgba(180,225,255,0.35) !important;
+      box-shadow: inset -1px 0 0 rgba(255,255,255,0.08), 3px 0 20px rgba(0,20,60,0.5) !important;
       position: relative !important;
       overflow: hidden !important;
     }
-    /* Subtle blue accent line on sidebar right edge */
+    /* Cyan glow strip on sidebar right edge */
     .bg-sidebar::after {
       content: '';
-      position: absolute; top: 0; right: 0; bottom: 0; width: 1px;
+      position: absolute; top: 10%; right: 0; bottom: 10%; width: 1px;
       background: linear-gradient(180deg,
         transparent 0%,
-        rgba(40,100,255,0.6) 30%,
-        rgba(30,80,220,0.4) 70%,
-        transparent 100%
-      );
+        var(--aero-cyan) 30%,
+        rgba(0,140,220,0.6) 70%,
+        transparent 100%);
+      box-shadow: 0 0 8px var(--aero-cyan);
+    }
+    [data-mode="light"] .bg-sidebar {
+      background: linear-gradient(180deg, rgba(220,240,255,0.75) 0%, rgba(180,215,245,0.80) 100%) !important;
+      border-right: 1px solid rgba(120,170,220,0.4) !important;
+      box-shadow: inset -1px 0 0 rgba(255,255,255,0.6), 3px 0 16px rgba(30,80,140,0.15) !important;
     }
 
-    /* ── Active sidebar item: XP selection highlight ── */
-    .bg-primary\/15 {
+    /* ── Active sidebar item: Aero selected item — cyan glow rail ── */
+    .bg-primary\\/15 {
       background: linear-gradient(90deg,
-        rgba(26,108,216,0.25) 0%,
-        rgba(26,108,216,0.1) 100%
-      ) !important;
-      border-left: 3px solid #1a6cd8 !important;
-      box-shadow: inset 0 0 20px rgba(26,108,216,0.1) !important;
-      animation: xpGlow 2.5s ease-in-out infinite !important;
+        rgba(0,180,255,0.30) 0%,
+        rgba(0,140,240,0.18) 60%,
+        rgba(0,120,220,0.05) 100%) !important;
+      border-left: 3px solid var(--aero-cyan) !important;
+      border-radius: 0 6px 6px 0 !important;
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.20),
+        inset 0 -1px 0 rgba(0,60,120,0.20),
+        0 0 14px rgba(0,180,255,0.35) !important;
+    }
+    [data-mode="light"] .bg-primary\\/15 {
+      background: linear-gradient(90deg, rgba(0,140,240,0.22) 0%, rgba(0,180,255,0.10) 100%) !important;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.6), 0 0 12px rgba(0,180,255,0.25) !important;
     }
 
-    /* ── Sticky headers: XP Luna title bar ── */
+    /* ── Sticky headers: Aero title bar (translucent gloss) ── */
     .sticky {
       background: linear-gradient(180deg,
-        #3a7ae8 0%,
-        #1e64d0 30%,
-        #1255b8 65%,
-        #0e4aa8 100%
-      ) !important;
-      border-bottom: 2px solid #0a3a8a !important;
-      box-shadow: 0 3px 12px rgba(0,0,0,0.6), 0 1px 0 rgba(100,160,255,0.25) !important;
+        rgba(120,190,255,0.45) 0%,
+        rgba(30,110,220,0.55) 55%,
+        rgba(10,80,190,0.65) 100%) !important;
+      backdrop-filter: blur(24px) saturate(180%) !important;
+      -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+      border-bottom: 1px solid rgba(180,225,255,0.35) !important;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.4), 0 3px 12px rgba(0,30,80,0.35) !important;
       position: relative !important;
+      overflow: hidden !important;
     }
-    /* XP window scan line shimmer on header */
     .sticky::before {
       content: '';
-      position: absolute; top: 0; left: 0; right: 0; height: 40%;
-      background: linear-gradient(180deg, rgba(255,255,255,0.08) 0%, transparent 100%);
+      position: absolute; top: 0; left: 0; right: 0; height: 50%;
+      background: linear-gradient(180deg, rgba(255,255,255,0.28) 0%, transparent 100%);
       pointer-events: none;
     }
-    /* Recolor header text to white */
-    .sticky h1, .sticky p.text-xs, .sticky .text-muted-foreground { color: rgba(255,255,255,0.9) !important; }
-    .sticky button { color: rgba(255,255,255,0.8) !important; }
+    .sticky h1, .sticky p.text-xs, .sticky .text-muted-foreground { color: rgba(255,255,255,0.95) !important; text-shadow: 0 1px 2px rgba(0,20,60,0.5) !important; }
+    .sticky button { color: rgba(255,255,255,0.9) !important; }
+    [data-mode="light"] .sticky {
+      background: linear-gradient(180deg, rgba(255,255,255,0.85) 0%, rgba(200,225,250,0.80) 100%) !important;
+      border-bottom: 1px solid rgba(120,180,230,0.4) !important;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,1), 0 2px 8px rgba(30,80,140,0.12) !important;
+    }
+    [data-mode="light"] .sticky h1, [data-mode="light"] .sticky p.text-xs, [data-mode="light"] .sticky .text-muted-foreground {
+      color: #062a5a !important; text-shadow: 0 1px 0 rgba(255,255,255,0.7) !important;
+    }
+    [data-mode="light"] .sticky button { color: #0a3a7a !important; }
 
-    /* ── Primary buttons: XP Luna glossy blue ── */
+    /* ── Primary buttons: Aero glossy blue orb pill (the Start button vibe) ── */
     .bg-primary:not([class*="bg-primary/"]):not(.text-primary) {
-      background: linear-gradient(180deg,
-        #5a9ef0 0%,
-        #2878e0 35%,
-        #1260c8 65%,
-        #0e54b0 100%
-      ) !important;
-      border: 1px solid #0a48a0 !important;
+      background:
+        linear-gradient(180deg,
+          rgba(180,230,255,0.85) 0%,
+          rgba(80,180,240,0.95) 45%,
+          rgba(20,110,210,1)    46%,
+          rgba(10,80,180,1)    100%) !important;
+      border: 1px solid rgba(0,50,140,0.9) !important;
+      border-top: 1px solid rgba(180,230,255,0.9) !important;
+      border-radius: 20px !important;
       box-shadow:
-        inset 0 1px 0 rgba(255,255,255,0.45),
-        inset 0 -1px 0 rgba(0,0,0,0.25),
-        0 3px 8px rgba(0,0,0,0.5),
-        0 1px 2px rgba(10,80,200,0.4) !important;
+        inset 0 1px 0 rgba(255,255,255,0.8),
+        inset 0 -1px 0 rgba(0,40,100,0.5),
+        inset 0 0 12px rgba(180,230,255,0.35),
+        0 2px 6px rgba(0,40,120,0.55),
+        0 0 0 1px rgba(0,180,255,0.15),
+        0 6px 18px -6px rgba(0,150,255,0.5) !important;
       color: #ffffff !important;
       font-weight: 600 !important;
-      text-shadow: 0 1px 2px rgba(0,0,0,0.5) !important;
-      border-radius: 4px !important;
+      text-shadow: 0 -1px 0 rgba(0,30,80,0.6), 0 1px 2px rgba(0,40,120,0.3) !important;
       letter-spacing: 0.01em !important;
+      position: relative !important;
+      overflow: hidden !important;
+    }
+    .bg-primary:not([class*="bg-primary/"]):not(.text-primary)::after {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 50%;
+      background: linear-gradient(180deg, rgba(255,255,255,0.45) 0%, rgba(255,255,255,0.05) 100%);
+      border-radius: 20px 20px 40% 40% / 20px 20px 100% 100%;
+      pointer-events: none;
     }
     .bg-primary:not([class*="bg-primary/"]):not(.text-primary):hover {
-      background: linear-gradient(180deg,
-        #6aaef8 0%,
-        #3888f0 35%,
-        #2070d8 65%,
-        #1860c0 100%
-      ) !important;
+      filter: brightness(1.12) saturate(1.1) !important;
       box-shadow:
-        inset 0 1px 0 rgba(255,255,255,0.5),
-        0 4px 12px rgba(10,80,220,0.5) !important;
+        inset 0 1px 0 rgba(255,255,255,0.9),
+        inset 0 -1px 0 rgba(0,40,100,0.5),
+        inset 0 0 16px rgba(180,240,255,0.5),
+        0 3px 8px rgba(0,40,120,0.6),
+        0 0 20px rgba(0,200,255,0.55),
+        0 8px 22px -6px rgba(0,180,255,0.7) !important;
     }
     .bg-primary:not([class*="bg-primary/"]):not(.text-primary):active {
-      background: linear-gradient(0deg,
-        #5a9ef0 0%,
-        #1260c8 50%,
-        #0e54b0 100%
-      ) !important;
-      box-shadow: inset 0 2px 4px rgba(0,0,0,0.4) !important;
+      background: linear-gradient(180deg,
+        rgba(10,80,180,1)    0%,
+        rgba(20,110,210,1)   45%,
+        rgba(80,180,240,0.9) 100%) !important;
+      box-shadow: inset 0 2px 4px rgba(0,20,60,0.55), inset 0 0 12px rgba(0,60,140,0.4) !important;
       transform: translateY(1px) !important;
     }
 
     /* ── Secondary surfaces ── */
-    .bg-secondary { background: rgba(16,18,40,0.7) !important; border: 1px solid rgba(60,100,200,0.12) !important; }
-    .bg-muted { background: rgba(10,12,28,0.6) !important; }
+    .bg-secondary {
+      background: linear-gradient(180deg, rgba(180,220,255,0.14) 0%, rgba(80,140,220,0.10) 100%) !important;
+      border: 1px solid rgba(180,225,255,0.22) !important;
+      backdrop-filter: blur(16px) !important;
+      -webkit-backdrop-filter: blur(16px) !important;
+    }
+    .bg-muted { background: rgba(30,60,120,0.20) !important; backdrop-filter: blur(12px) !important; -webkit-backdrop-filter: blur(12px) !important; }
+    [data-mode="light"] .bg-secondary { background: linear-gradient(180deg, rgba(255,255,255,0.7) 0%, rgba(220,240,255,0.7) 100%) !important; border: 1px solid rgba(150,200,240,0.5) !important; }
+    [data-mode="light"] .bg-muted { background: rgba(220,235,250,0.7) !important; }
 
     /* ── Borders ── */
-    .border-border, .divide-border>*+* { border-color: rgba(60,100,200,0.2) !important; }
+    .border-border, .divide-border>*+* { border-color: rgba(180,225,255,0.25) !important; }
+    [data-mode="light"] .border-border, [data-mode="light"] .divide-border>*+* { border-color: rgba(120,170,220,0.35) !important; }
 
-    /* ── Active track rows ── */
-    .bg-primary\/8, .bg-primary\/10 {
-      background: rgba(26,108,216,0.1) !important;
-      border-left: 2px solid rgba(26,108,216,0.5) !important;
+    /* ── Active track row highlight ── */
+    .bg-primary\\/8, .bg-primary\\/10 {
+      background: linear-gradient(90deg, rgba(0,180,255,0.15) 0%, rgba(0,140,240,0.05) 100%) !important;
+      border-left: 2px solid var(--aero-cyan) !important;
+      box-shadow: inset 0 0 12px rgba(0,180,255,0.08) !important;
     }
 
     /* ── Typography ── */
-    .text-primary { color: #4a9aff !important; }
-    .text-muted-foreground { color: rgba(160,180,220,0.65) !important; }
-    h1, h2 { color: #e8eaf0 !important; font-weight: 700 !important; }
-    .tracking-widest, .uppercase.text-xs { color: rgba(100,150,255,0.7) !important; letter-spacing: 0.16em !important; }
+    .text-primary { color: #7cd6ff !important; text-shadow: 0 0 12px rgba(0,180,255,0.4) !important; }
+    [data-mode="light"] .text-primary { color: #0665c8 !important; text-shadow: none !important; }
+    .text-muted-foreground { color: rgba(200,225,255,0.7) !important; }
+    [data-mode="light"] .text-muted-foreground { color: rgba(20,60,110,0.68) !important; }
+    h1, h2 { color: #f0f8ff !important; font-weight: 700 !important; text-shadow: 0 1px 2px rgba(0,20,60,0.4) !important; letter-spacing: -0.005em !important; }
+    [data-mode="light"] h1, [data-mode="light"] h2 { color: #062a5a !important; text-shadow: 0 1px 0 rgba(255,255,255,0.5) !important; }
+    .tracking-widest, .uppercase.text-xs { color: rgba(150,220,255,0.85) !important; letter-spacing: 0.18em !important; }
+    [data-mode="light"] .tracking-widest, [data-mode="light"] .uppercase.text-xs { color: rgba(10,80,160,0.85) !important; }
 
-    /* ── Inputs: XP inset field ── */
+    /* ── Inputs: Aero glass field ── */
     input:not([type=range]):not([type=color]):not([type=file]) {
-      background: rgba(4,6,20,0.9) !important;
-      border: 1px solid rgba(60,100,200,0.3) !important;
-      border-top-color: rgba(40,80,180,0.5) !important;
-      box-shadow: inset 1px 1px 3px rgba(0,0,0,0.4) !important;
-      color: #e8eaf0 !important;
+      background: linear-gradient(180deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.06) 100%) !important;
+      border: 1px solid rgba(180,225,255,0.35) !important;
+      border-top: 1px solid rgba(200,235,255,0.5) !important;
+      border-radius: 6px !important;
+      box-shadow: inset 0 1px 2px rgba(0,20,60,0.35), inset 0 -1px 0 rgba(255,255,255,0.10) !important;
+      color: #eaf4ff !important;
+      backdrop-filter: blur(10px) !important;
+      -webkit-backdrop-filter: blur(10px) !important;
     }
     input:not([type=range]):not([type=color]):not([type=file]):focus {
-      border-color: #1a6cd8 !important;
-      box-shadow: inset 1px 1px 3px rgba(0,0,0,0.4), 0 0 0 2px rgba(26,108,216,0.25) !important;
+      border-color: var(--aero-cyan) !important;
+      box-shadow:
+        inset 0 1px 2px rgba(0,20,60,0.35),
+        0 0 0 3px rgba(0,180,255,0.28),
+        0 0 12px rgba(0,180,255,0.35) !important;
+    }
+    [data-mode="light"] input:not([type=range]):not([type=color]):not([type=file]) {
+      background: linear-gradient(180deg, rgba(255,255,255,0.95) 0%, rgba(240,248,255,0.9) 100%) !important;
+      border: 1px solid rgba(120,170,220,0.55) !important;
+      color: #062a5a !important;
+      box-shadow: inset 0 1px 2px rgba(30,80,140,0.15) !important;
     }
 
     /* ── Shadows ── */
-    .shadow-md, .shadow-lg { box-shadow: 0 6px 24px rgba(0,0,0,0.6), 0 1px 0 rgba(80,140,255,0.08) !important; }
-    .shadow-xl, .shadow-2xl { box-shadow: 0 12px 40px rgba(0,0,0,0.7), 0 0 0 1px rgba(60,100,200,0.1) !important; }
+    .shadow-md, .shadow-lg { box-shadow: 0 8px 26px rgba(0,20,60,0.55), inset 0 1px 0 rgba(255,255,255,0.18) !important; }
+    .shadow-xl, .shadow-2xl { box-shadow: 0 20px 60px rgba(0,20,60,0.65), inset 0 1px 0 rgba(255,255,255,0.22), 0 0 0 1px rgba(0,180,255,0.15) !important; }
+    [data-mode="light"] .shadow-md, [data-mode="light"] .shadow-lg { box-shadow: 0 8px 24px rgba(30,80,140,0.20), inset 0 1px 0 rgba(255,255,255,0.9) !important; }
+    [data-mode="light"] .shadow-xl, [data-mode="light"] .shadow-2xl { box-shadow: 0 20px 50px rgba(30,80,140,0.30), inset 0 1px 0 rgba(255,255,255,1) !important; }
 
     /* ── Hover states ── */
-    .hover\\:bg-card:hover { background: rgba(16,20,44,0.95) !important; border-color: rgba(60,110,220,0.3) !important; }
-    .hover\\:bg-secondary:hover { background: rgba(20,22,50,0.8) !important; }
-    .group:hover .bg-card { border-color: rgba(60,110,220,0.3) !important; box-shadow: 0 8px 28px rgba(0,0,0,0.65), inset 0 1px 0 rgba(80,140,255,0.12) !important; }
+    .hover\\:bg-card:hover { background: linear-gradient(180deg, rgba(200,235,255,0.25) 0%, rgba(120,180,240,0.18) 100%) !important; border-color: rgba(0,200,255,0.4) !important; box-shadow: 0 0 20px rgba(0,180,255,0.25), inset 0 1px 0 rgba(255,255,255,0.3) !important; }
+    .hover\\:bg-secondary:hover { background: rgba(180,225,255,0.14) !important; }
+    .group:hover .bg-card { border-color: rgba(0,200,255,0.45) !important; box-shadow: 0 10px 28px rgba(0,30,90,0.6), 0 0 22px rgba(0,180,255,0.3), inset 0 1px 0 rgba(255,255,255,0.28) !important; }
+    [data-mode="light"] .group:hover .bg-card { box-shadow: 0 12px 30px rgba(30,80,140,0.25), 0 0 20px rgba(0,180,255,0.20), inset 0 1px 0 rgba(255,255,255,1) !important; }
 
-    /* ── Modals: XP dialog appearance ── */
+    /* ── Modal: Aero window ── */
     [class*="max-w-md"], [class*="max-w-sm"], [class*="max-w-lg"] {
-      border: 2px solid rgba(60,110,220,0.4) !important;
-      border-top: 3px solid #1a6cd8 !important;
-      box-shadow: 0 24px 64px rgba(0,0,0,0.85), 0 0 0 1px rgba(80,140,255,0.08) !important;
-      animation: xpWindowOpen 0.18s ease-out !important;
+      border: 1px solid rgba(180,225,255,0.45) !important;
+      border-top: 1px solid rgba(220,245,255,0.7) !important;
+      border-radius: 8px !important;
+      box-shadow: 0 30px 80px rgba(0,20,60,0.85), 0 0 0 1px rgba(0,180,255,0.2), inset 0 1px 0 rgba(255,255,255,0.35) !important;
+      animation: aeroWindowOpen 0.22s cubic-bezier(0.2,0.9,0.35,1.15) !important;
     }
 
-    /* ── Scrollbar: XP styled ── */
-    ::-webkit-scrollbar { width: 12px !important; }
-    ::-webkit-scrollbar-track { background: #080818 !important; border-left: 1px solid rgba(60,100,200,0.15) !important; }
-    ::-webkit-scrollbar-thumb {
-      background: linear-gradient(90deg, #2060b8 0%, #3878d0 50%, #2060b8 100%) !important;
-      border: 1px solid #1050a0 !important;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.25) !important;
+    /* ── Scrollbar: Aero glass ── */
+    ::-webkit-scrollbar { width: 14px !important; }
+    ::-webkit-scrollbar-track {
+      background: linear-gradient(90deg, rgba(0,20,60,0.4), rgba(0,10,40,0.5)) !important;
+      border-left: 1px solid rgba(180,225,255,0.15) !important;
     }
-    ::-webkit-scrollbar-thumb:hover { background: linear-gradient(90deg, #2870c8 0%, #4888e0 50%, #2870c8 100%) !important; }
-    ::-webkit-scrollbar-button { height: 12px !important; background: #0e0e24 !important; border: 1px solid rgba(60,100,200,0.2) !important; }
+    ::-webkit-scrollbar-thumb {
+      background: linear-gradient(90deg, rgba(120,200,255,0.6) 0%, rgba(30,120,230,0.85) 50%, rgba(10,80,180,0.9) 100%) !important;
+      border: 1px solid rgba(200,235,255,0.4) !important;
+      border-radius: 7px !important;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 0 6px rgba(0,180,255,0.3) !important;
+    }
+    ::-webkit-scrollbar-thumb:hover { filter: brightness(1.15); }
+    [data-mode="light"] ::-webkit-scrollbar-track { background: linear-gradient(90deg, rgba(220,235,250,0.7), rgba(200,225,245,0.8)) !important; border-left-color: rgba(120,180,230,0.3) !important; }
 
     /* ── Images ── */
-    img { box-shadow: 0 2px 8px rgba(0,0,0,0.5), 0 0 0 1px rgba(60,100,200,0.12) !important; }
+    img { box-shadow: 0 4px 14px rgba(0,20,60,0.5), 0 0 0 1px rgba(180,225,255,0.25) !important; }
+    [data-mode="light"] img { box-shadow: 0 4px 14px rgba(30,80,140,0.20), 0 0 0 1px rgba(120,170,220,0.35) !important; }
 
-    /* ── Rounded (keep era-accurate small radius) ── */
-    .rounded-md  { border-radius: 4px !important; }
-    .rounded-lg  { border-radius: 6px !important; }
-    .rounded-xl  { border-radius: 8px !important; }
-    .rounded-2xl { border-radius: 10px !important; }
-    .rounded-3xl { border-radius: 12px !important; }
+    /* ── Rounded (era-accurate, gentle radii) ── */
+    .rounded-md  { border-radius: 6px !important; }
+    .rounded-lg  { border-radius: 8px !important; }
+    .rounded-xl  { border-radius: 10px !important; }
+    .rounded-2xl { border-radius: 12px !important; }
+    .rounded-3xl { border-radius: 14px !important; }
   `,
+
 
   unique: `
     /* Synthwave Brutalism */
@@ -961,6 +1215,7 @@ function applyTheme(t: AppTheme) {
   for (const [k, v] of Object.entries(vars)) {
     root.style.setProperty(k, v);
   }
+  root.setAttribute("data-mode", t.mode);
   applyLayoutTheme(t.layoutTheme ?? "default");
   applyCustomThemeConfig(t.custom ?? DEFAULT_CUSTOM_CONFIG, t.accent);
 
@@ -5834,189 +6089,282 @@ function FullscreenModern(props: FullscreenSharedProps) {
 }
 
 function FullscreenClassic(props: FullscreenSharedProps) {
-  const { project, track, player, onTogglePlay, onSeek, onVolume, onPrev, onNext, onShuffle, onClose, accentColor, liked, toggleLike } = props;
+  const { project, track, player, onTogglePlay, onSeek, onVolume, onPrev, onNext, onShuffle, onClose, liked, toggleLike } = props;
   const hasCover = !!project.coverDataUrl;
   const progress = player.duration > 0 ? player.currentTime / player.duration : 0;
-  const BLUE = "#1a6cd8", LBLUE = "#4a9aff", DIM = "rgba(160,180,220,0.6)";
+  const CYAN = "#00c8ff", BLUE = "#1e8fef", DEEP = "#0a4fb0";
 
-  // XP Luna button style
-  const xpBtn = (active?: boolean, danger?: boolean): React.CSSProperties => ({
-    background: danger
-      ? "linear-gradient(180deg,#e05050 0%,#b03030 100%)"
-      : active
-        ? "linear-gradient(180deg,#5a9ef0 0%,#2878e0 40%,#1260c8 100%)"
-        : "linear-gradient(180deg,#2e3050 0%,#1e2040 100%)",
-    border: `1px solid ${danger ? "#803030" : active ? "#0a48a0" : "rgba(80,100,200,0.4)"}`,
-    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.2), 0 1px 3px rgba(0,0,0,0.6)",
-    color: "#fff",
-    cursor: "pointer",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontFamily: "'Segoe UI',Tahoma,system-ui,sans-serif",
-    fontWeight: 600,
-    letterSpacing: "0.01em",
-    transition: "all 0.1s ease",
-  });
+  // Aero glossy orb button
+  const AeroOrb = ({ onClick, children, primary, active, disabled, size = 44 }: { onClick?:()=>void; children:React.ReactNode; primary?:boolean; active?:boolean; disabled?:boolean; size?:number }) => (
+    <button onClick={onClick} disabled={disabled} style={{
+      width: size, height: size, borderRadius: size/2,
+      background: primary
+        ? `radial-gradient(circle at 50% 20%, rgba(255,255,255,0.95) 0%, rgba(180,240,255,0.95) 22%, ${CYAN} 50%, ${BLUE} 78%, #0b5cb8 100%)`
+        : active
+          ? `linear-gradient(180deg, rgba(200,240,255,0.9) 0%, ${CYAN} 50%, ${BLUE} 100%)`
+          : `linear-gradient(180deg, rgba(220,240,255,0.55) 0%, rgba(140,190,240,0.3) 48%, rgba(50,110,200,0.35) 50%, rgba(20,70,170,0.5) 100%)`,
+      border: `1px solid ${primary || active ? "rgba(0,50,130,0.9)" : "rgba(180,225,255,0.55)"}`,
+      boxShadow: primary
+        ? `inset 0 1px 0 rgba(255,255,255,1), inset 0 -4px 8px rgba(0,40,100,0.55), 0 0 20px rgba(0,180,255,0.7), 0 4px 12px rgba(0,40,120,0.65), 0 0 0 3px rgba(0,180,255,0.15)`
+        : active
+          ? `inset 0 1px 0 rgba(255,255,255,0.75), 0 0 14px rgba(0,180,255,0.55), 0 3px 8px rgba(0,40,120,0.5)`
+          : `inset 0 1px 0 rgba(255,255,255,0.4), inset 0 -1px 0 rgba(0,20,60,0.35), 0 2px 5px rgba(0,20,60,0.5)`,
+      color: primary || active ? "#fff" : "rgba(230,244,255,0.94)",
+      cursor: disabled ? "default" : "pointer",
+      display: "flex", alignItems: "center", justifyContent: "center",
+      opacity: disabled ? 0.3 : 1,
+      position: "relative", overflow: "hidden",
+      transition: "filter 0.15s ease, transform 0.1s ease, box-shadow 0.25s ease",
+    }}
+    onMouseEnter={e => { if (!disabled) e.currentTarget.style.filter = "brightness(1.15) saturate(1.1)"; }}
+    onMouseLeave={e => { e.currentTarget.style.filter = "brightness(1)"; }}
+    >
+      <span style={{ position: "absolute", top: 1, left: 1, right: 1, height: "50%", borderRadius: `${size/2}px ${size/2}px 50% 50% / ${size/2}px ${size/2}px 100% 100%`, background: "linear-gradient(180deg, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.08) 100%)", pointerEvents: "none" }} />
+      <span style={{ position: "relative", display: "flex", filter: "drop-shadow(0 1px 1px rgba(0,20,60,0.5))" }}>{children}</span>
+    </button>
+  );
 
   return (
     <div className="fixed inset-0 z-[200] flex flex-col overflow-hidden"
-      style={{ background: "#06060e", fontFamily: "'Segoe UI',Tahoma,system-ui,sans-serif" }}>
+      style={{
+        background: `radial-gradient(ellipse at 30% 110%, rgba(0,180,255,0.35) 0%, transparent 55%),
+                     radial-gradient(ellipse at 80% -10%, rgba(120,220,255,0.28) 0%, transparent 50%),
+                     linear-gradient(180deg, #041832 0%, #062a5e 40%, #0a4098 100%)`,
+        fontFamily: "'Segoe UI',Tahoma,system-ui,sans-serif",
+      }}>
 
-      {/* Animated PS3 wave background */}
-      <div className="absolute inset-0 pointer-events-none" style={{
-        background: "radial-gradient(ellipse at 30% 70%, rgba(10,40,180,0.22) 0%, transparent 55%), radial-gradient(ellipse at 70% 30%, rgba(20,60,200,0.15) 0%, transparent 45%)",
-      }} />
-      {/* Scan line */}
-      <div className="absolute left-0 right-0 pointer-events-none" style={{
-        height: 120, background: "linear-gradient(transparent, rgba(26,108,216,0.06), transparent)",
-        animation: "ps3Scan 5s linear infinite", zIndex: 1,
-      }} />
       <style>{`
-        @keyframes ps3Scan { from { top: -120px; } to { top: 110%; } }
-        @keyframes xpGlowPulse { 0%,100%{box-shadow:0 0 12px rgba(26,108,216,0.5);} 50%{box-shadow:0 0 28px rgba(26,108,216,0.8), 0 0 48px rgba(26,108,216,0.3);} }
-        @keyframes eqPulse { 0%,100%{height:15%;} 50%{height:100%;} }
+        @keyframes aeroFsBubble {
+          0%   { transform: translateY(0) translateX(0) scale(1); opacity: 0.6; }
+          50%  { transform: translateY(-55vh) translateX(30px) scale(1.15); opacity: 0.9; }
+          100% { transform: translateY(-115vh) translateX(-15px) scale(0.85); opacity: 0; }
+        }
+        @keyframes aeroFsGlow {
+          0%,100% { box-shadow: 0 0 40px rgba(0,180,255,0.5), 0 0 80px rgba(0,180,255,0.25), inset 0 2px 0 rgba(255,255,255,0.4); }
+          50%     { box-shadow: 0 0 60px rgba(0,180,255,0.75), 0 0 120px rgba(0,180,255,0.4), inset 0 2px 0 rgba(255,255,255,0.5); }
+        }
       `}</style>
 
-      {/* XP-style title bar */}
-      <div className="shrink-0 flex items-center justify-between px-3 py-1.5 relative z-10"
-        style={{ background: "linear-gradient(180deg,#3a7ae8 0%,#1a60d0 40%,#1050b8 100%)", borderBottom: "2px solid #0a3a90", boxShadow: "0 3px 12px rgba(0,0,0,0.6)" }}>
-        <div className="flex items-center gap-2">
-          {/* XP traffic lights */}
-          {[["#e04040","#a02020"],["#e0a020","#a07010"],["#40c040","#208820"]].map(([bg,border],i) => (
-            <div key={i} style={{ width: 14, height: 14, borderRadius: 7, background: `radial-gradient(circle at 35% 35%, ${bg} 0%, ${border} 100%)`, border: `1px solid ${border}`, boxShadow: `inset 0 1px 0 rgba(255,255,255,0.4)` }} />
-          ))}
-          <span style={{ fontSize: 12, fontWeight: 700, color: "#fff", textShadow: "0 1px 2px rgba(0,0,0,0.6)", marginLeft: 4 }}>
+      {/* Rising bubbles */}
+      <div className="absolute inset-x-0 pointer-events-none" style={{
+        bottom: "-20vh", height: "140vh",
+        backgroundImage:
+          "radial-gradient(circle at 15% 90%, rgba(200,240,255,0.42) 0 8px, transparent 9px)," +
+          "radial-gradient(circle at 82% 70%, rgba(210,245,255,0.35) 0 5px, transparent 6px)," +
+          "radial-gradient(circle at 45% 50%, rgba(170,225,255,0.30) 0 12px, transparent 13px)," +
+          "radial-gradient(circle at 70% 20%, rgba(220,250,255,0.35) 0 6px, transparent 7px)," +
+          "radial-gradient(circle at 25% 30%, rgba(180,235,255,0.25) 0 9px, transparent 10px)," +
+          "radial-gradient(circle at 90% 40%, rgba(210,245,255,0.28) 0 4px, transparent 5px)," +
+          "radial-gradient(circle at 55% 85%, rgba(160,225,255,0.32) 0 10px, transparent 11px)",
+        animation: "aeroFsBubble 26s linear infinite",
+      }} />
+      <div className="absolute inset-x-0 pointer-events-none" style={{
+        bottom: "-20vh", height: "140vh",
+        backgroundImage:
+          "radial-gradient(circle at 35% 60%, rgba(200,240,255,0.30) 0 6px, transparent 7px)," +
+          "radial-gradient(circle at 65% 40%, rgba(170,225,255,0.28) 0 10px, transparent 11px)," +
+          "radial-gradient(circle at 10% 20%, rgba(220,250,255,0.30) 0 4px, transparent 5px)",
+        animation: "aeroFsBubble 38s linear infinite -14s",
+        opacity: 0.65,
+      }} />
+
+      {/* Aero window title bar */}
+      <div className="shrink-0 flex items-center justify-between px-3 py-2 relative z-10"
+        style={{
+          background: "linear-gradient(180deg, rgba(160,220,255,0.55) 0%, rgba(30,120,220,0.60) 50%, rgba(10,70,170,0.75) 100%)",
+          backdropFilter: "blur(24px) saturate(200%)",
+          WebkitBackdropFilter: "blur(24px) saturate(200%)",
+          borderBottom: "1px solid rgba(200,235,255,0.45)",
+          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.5), 0 4px 20px rgba(0,20,60,0.5)",
+          overflow: "hidden",
+        }}>
+        <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "50%", background: "linear-gradient(180deg, rgba(255,255,255,0.35) 0%, transparent 100%)", pointerEvents: "none" }} />
+        <div className="flex items-center gap-2 relative">
+          <div style={{ width: 16, height: 16, borderRadius: 8, background: "radial-gradient(circle at 40% 30%, #fff 0%, #7cd6ff 30%, #0080e0 100%)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.6), 0 0 6px rgba(0,180,255,0.6)" }} />
+          <span style={{ fontSize: 13, fontWeight: 600, color: "#fff", textShadow: "0 1px 2px rgba(0,20,60,0.7)", letterSpacing: "0.01em" }}>
             Melodia — Now Playing
           </span>
         </div>
-        <div className="flex items-center gap-1">
-          {["—","□"].map((s,i) => (
-            <button key={i} style={{ ...xpBtn(), width: 20, height: 18, fontSize: 11 }}>{s}</button>
+        <div className="flex items-center gap-1.5 relative">
+          {["—","▢"].map((s,i) => (
+            <button key={i} style={{
+              width: 26, height: 22, borderRadius: 4,
+              background: "linear-gradient(180deg, rgba(220,240,255,0.5) 0%, rgba(80,150,220,0.3) 100%)",
+              border: "1px solid rgba(180,225,255,0.5)",
+              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.5)",
+              color: "#fff", fontSize: 11, cursor: "pointer",
+            }}>{s}</button>
           ))}
-          <button onClick={onClose} style={{ ...xpBtn(false, true), width: 20, height: 18, fontSize: 11, fontWeight: 900 }}>✕</button>
+          <button onClick={onClose} style={{
+            width: 28, height: 22, borderRadius: 4,
+            background: "linear-gradient(180deg, #ff8080 0%, #e04040 50%, #a02020 100%)",
+            border: "1px solid rgba(120,20,20,0.9)",
+            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.4), 0 0 8px rgba(255,80,80,0.4)",
+            color: "#fff", fontSize: 11, fontWeight: 900, cursor: "pointer",
+            textShadow: "0 1px 1px rgba(0,0,0,0.5)",
+          }}>✕</button>
         </div>
       </div>
 
-      {/* Menubar */}
-      <div className="shrink-0 flex items-center px-3 gap-1 relative z-10" style={{ height: 24, background: "rgba(10,12,30,0.95)", borderBottom: "1px solid rgba(60,100,200,0.2)" }}>
-        {["Music", "View", "Controls", "Help"].map(m => (
-          <button key={m} style={{ fontSize: 11, color: DIM, background: "transparent", border: "none", cursor: "pointer", padding: "2px 8px", fontFamily: "inherit" }}
-            onMouseEnter={e => (e.currentTarget.style.background = "rgba(26,108,216,0.3)")}
-            onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
-            {m}
-          </button>
-        ))}
-      </div>
-
-      {/* Main content area */}
+      {/* Main content */}
       <div className="flex-1 flex overflow-hidden relative z-10" style={{ minHeight: 0 }}>
 
-        {/* LEFT: Album art + EQ */}
-        <div className="flex flex-col items-center justify-center shrink-0 gap-4 px-8"
-          style={{ width: 300, borderRight: "1px solid rgba(60,100,200,0.15)", background: "rgba(6,6,18,0.5)" }}>
-          {/* Album art with XP inset frame */}
+        {/* LEFT: Album art with Aero orb glow */}
+        <div className="flex flex-col items-center justify-center shrink-0 gap-6 px-10"
+          style={{ width: 380, borderRight: "1px solid rgba(180,225,255,0.15)" }}>
           <div style={{
-            width: 220, height: 220, position: "relative",
-            border: "3px solid rgba(60,100,200,0.3)",
-            borderTop: "3px solid rgba(80,140,255,0.5)",
-            boxShadow: `0 0 32px rgba(26,108,216,0.3), inset 0 0 0 1px rgba(80,140,255,0.1), 0 8px 32px rgba(0,0,0,0.7)`,
-            animation: "xpGlowPulse 3s ease-in-out infinite",
+            width: 260, height: 260, position: "relative",
+            borderRadius: 16,
+            border: "1px solid rgba(200,240,255,0.55)",
+            animation: "aeroFsGlow 3.5s ease-in-out infinite",
             overflow: "hidden",
           }}>
             {hasCover
-              ? <img src={project.coverDataUrl!} alt={project.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-              : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(10,14,40,0.9)" }}>
-                  <Music size={72} style={{ color: LBLUE, opacity: 0.4 }} />
+              ? <img src={project.coverDataUrl!} alt={project.name} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+              : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: `linear-gradient(180deg,#1a5fbe 0%,#062a70 100%)` }}>
+                  <Music size={84} style={{ color: "#c8ecff", opacity: 0.65 }} />
                 </div>}
-            {/* Glossy sheen */}
-            <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "45%", background: "linear-gradient(180deg,rgba(255,255,255,0.08) 0%,transparent 100%)", pointerEvents: "none" }} />
+            {/* Aero glossy sheen */}
+            <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "48%", background: "linear-gradient(180deg, rgba(255,255,255,0.32) 0%, rgba(255,255,255,0.06) 60%, transparent 100%)", borderRadius: "16px 16px 45% 45% / 16px 16px 100% 100%", pointerEvents: "none" }} />
+            {/* Inner rim */}
+            <div style={{ position: "absolute", inset: 0, borderRadius: 16, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.5), inset 0 -1px 0 rgba(0,30,80,0.4)", pointerEvents: "none" }} />
           </div>
 
-          {/* Equalizer bars — PS3 style */}
-          <div style={{ display: "flex", gap: 3, alignItems: "flex-end", height: 36, width: 220 }}>
-            {Array.from({ length: 28 }, (_, i) => {
-              const h = player.isPlaying ? `${10 + Math.abs(Math.sin(Date.now() / 250 + i * 0.8)) * 90}%` : "8%";
-              return <div key={i} style={{ flex: 1, background: `linear-gradient(180deg,${LBLUE} 0%,${BLUE} 100%)`, minHeight: 3, height: h, opacity: 0.7 + (i % 3) * 0.1, transition: "height 0.1s ease", borderRadius: "1px 1px 0 0" }} />;
+          {/* Aero EQ visualizer */}
+          <div style={{ display: "flex", gap: 3, alignItems: "flex-end", height: 42, width: 260 }}>
+            {Array.from({ length: 32 }, (_, i) => {
+              const h = player.isPlaying ? `${8 + Math.abs(Math.sin(Date.now() / 220 + i * 0.7)) * 92}%` : "6%";
+              return <div key={i} style={{
+                flex: 1, minHeight: 3, height: h,
+                background: `linear-gradient(180deg, #fff 0%, ${CYAN} 40%, ${BLUE} 80%, ${DEEP} 100%)`,
+                borderRadius: "2px 2px 1px 1px",
+                boxShadow: `0 0 6px ${CYAN}, inset 0 1px 0 rgba(255,255,255,0.6)`,
+                transition: "height 0.08s ease",
+              }} />;
             })}
           </div>
         </div>
 
-        {/* RIGHT: Track info + controls */}
-        <div className="flex-1 flex flex-col justify-center px-10 gap-6" style={{ minWidth: 0, background: "rgba(4,4,14,0.4)" }}>
+        {/* RIGHT: info + controls */}
+        <div className="flex-1 flex flex-col justify-center px-12 gap-8" style={{ minWidth: 0 }}>
 
-          {/* Track info — XP info panel style */}
-          <div style={{ border: "1px solid rgba(60,100,200,0.25)", borderTop: `3px solid ${BLUE}`, background: "rgba(8,8,24,0.8)", padding: "16px 20px", boxShadow: "inset 0 0 20px rgba(0,0,0,0.4)" }}>
-            <div style={{ fontSize: 11, color: LBLUE, letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: 8 }}>Now Playing</div>
-            <div style={{ fontSize: 24, fontWeight: 700, color: "#fff", lineHeight: 1.2, marginBottom: 4, textShadow: "0 0 20px rgba(80,140,255,0.3)" }}>{track.name}</div>
-            <div style={{ fontSize: 14, color: LBLUE, marginBottom: 3 }}>{project.artist || "Unknown Artist"}</div>
-            <div style={{ fontSize: 11, color: DIM }}>{project.isSingle ? "Single" : project.name}</div>
-            {/* Like button */}
-            {toggleLike && (
-              <button onClick={() => toggleLike(project.id, track.id)} style={{ ...xpBtn(liked), marginTop: 12, padding: "4px 14px", borderRadius: 3, fontSize: 11, gap: 4, display: "flex", alignItems: "center" }}>
-                <Heart size={12} fill={liked ? "currentColor" : "none"} strokeWidth={liked ? 0 : 1.5} />
-                {liked ? "Liked" : "Like"}
-              </button>
-            )}
+          {/* Track info — Aero glass panel */}
+          <div style={{
+            borderRadius: 12,
+            border: "1px solid rgba(200,240,255,0.4)",
+            borderTop: "1px solid rgba(220,245,255,0.65)",
+            background: "linear-gradient(180deg, rgba(180,220,255,0.18) 0%, rgba(30,80,160,0.28) 100%)",
+            backdropFilter: "blur(28px) saturate(180%)",
+            WebkitBackdropFilter: "blur(28px) saturate(180%)",
+            padding: "22px 26px",
+            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.4), 0 8px 28px rgba(0,20,60,0.5)",
+            position: "relative", overflow: "hidden",
+          }}>
+            <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "42%", background: "linear-gradient(180deg, rgba(255,255,255,0.22) 0%, transparent 100%)", pointerEvents: "none" }} />
+            <div style={{ position: "relative" }}>
+              <div style={{ fontSize: 11, color: "#a8dcff", letterSpacing: "0.22em", textTransform: "uppercase", marginBottom: 10, fontWeight: 600 }}>Now Playing</div>
+              <div style={{ fontSize: 30, fontWeight: 700, color: "#fff", lineHeight: 1.15, marginBottom: 6, textShadow: "0 2px 8px rgba(0,20,60,0.5), 0 0 24px rgba(0,180,255,0.35)", letterSpacing: "-0.01em" }}>{track.name}</div>
+              <div style={{ fontSize: 15, color: "#c8ecff", marginBottom: 4, textShadow: "0 1px 2px rgba(0,20,60,0.4)" }}>{project.artist || "Unknown Artist"}</div>
+              <div style={{ fontSize: 12, color: "rgba(200,225,255,0.7)" }}>{project.isSingle ? "Single" : project.name}</div>
+              {toggleLike && (
+                <button onClick={() => toggleLike(project.id, track.id)} style={{
+                  marginTop: 16, padding: "6px 16px", borderRadius: 16,
+                  background: liked
+                    ? `linear-gradient(180deg, #ff9ec0 0%, #e94a8d 50%, #b02068 100%)`
+                    : `linear-gradient(180deg, rgba(220,240,255,0.5) 0%, rgba(80,150,220,0.35) 50%, rgba(30,90,180,0.4) 100%)`,
+                  border: `1px solid ${liked ? "rgba(120,20,60,0.85)" : "rgba(180,225,255,0.55)"}`,
+                  boxShadow: `inset 0 1px 0 rgba(255,255,255,0.55), 0 2px 6px rgba(0,20,60,0.5), 0 0 12px ${liked ? "rgba(233,74,141,0.5)" : "rgba(0,180,255,0.3)"}`,
+                  color: "#fff", fontSize: 12, fontWeight: 600,
+                  display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer",
+                  textShadow: "0 1px 1px rgba(0,20,60,0.5)",
+                }}>
+                  <Heart size={13} fill={liked ? "currentColor" : "none"} strokeWidth={liked ? 0 : 2} />
+                  {liked ? "Liked" : "Like"}
+                </button>
+              )}
+            </div>
           </div>
 
-          {/* Progress — XP progress bar with PS3 glow */}
+          {/* Progress — Aero glass scrubber */}
           <div>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: DIM, marginBottom: 6, fontVariantNumeric: "tabular-nums" }}>
-              <span style={{ color: LBLUE }}>{fmt(player.currentTime)}</span>
-              <span>{fmt(player.duration)}</span>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#a8dcff", marginBottom: 8, fontVariantNumeric: "tabular-nums" }}>
+              <span>{fmt(player.currentTime)}</span>
+              <span style={{ color: "rgba(200,225,255,0.55)" }}>{fmt(player.duration)}</span>
             </div>
-            <div style={{ height: 18, background: "rgba(4,6,20,0.9)", border: "1px solid rgba(60,100,200,0.25)", borderTop: "1px solid rgba(40,80,180,0.4)", boxShadow: "inset 0 1px 4px rgba(0,0,0,0.5)", cursor: "pointer", position: "relative", borderRadius: 2 }}
+            <div style={{
+              height: 20, borderRadius: 10,
+              background: "linear-gradient(180deg, rgba(0,10,40,0.85) 0%, rgba(0,20,60,0.6) 100%)",
+              border: "1px solid rgba(180,225,255,0.35)",
+              boxShadow: "inset 0 2px 5px rgba(0,10,40,0.65), inset 0 -1px 0 rgba(255,255,255,0.1)",
+              cursor: "pointer", position: "relative", overflow: "hidden",
+            }}
               onClick={e => { const r = e.currentTarget.getBoundingClientRect(); onSeek(((e.clientX - r.left) / r.width) * player.duration); }}>
-              <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${progress * 100}%`, background: `linear-gradient(180deg,${LBLUE} 0%,${BLUE} 50%,rgba(10,50,160,0.9) 100%)`, boxShadow: `0 0 8px ${BLUE}`, transition: "width 0.1s linear", borderRadius: 2 }}>
-                <div style={{ position: "absolute", inset: 0, top: 0, height: "50%", background: "rgba(255,255,255,0.2)", borderRadius: "2px 2px 0 0" }} />
-                <div style={{ position: "absolute", right: 0, top: "50%", transform: "translateY(-50%)", width: 8, height: 14, background: "rgba(255,255,255,0.9)", borderRadius: 1 }} />
+              <div style={{
+                position: "absolute", left: 0, top: 0, bottom: 0,
+                width: `${progress * 100}%`,
+                background: `linear-gradient(180deg, rgba(220,245,255,0.95) 0%, ${CYAN} 45%, ${BLUE} 100%)`,
+                boxShadow: `0 0 14px ${CYAN}, inset 0 1px 0 rgba(255,255,255,0.7)`,
+                transition: "width 0.1s linear",
+                borderRadius: 10,
+              }}>
+                <div style={{ position: "absolute", top: 1, left: 1, right: 1, height: "48%", background: "linear-gradient(180deg, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.05) 100%)", borderRadius: "9px 9px 50% 50% / 9px 9px 100% 100%" }} />
+                <div style={{ position: "absolute", right: -8, top: "50%", transform: "translateY(-50%)", width: 18, height: 18, borderRadius: "50%", background: `radial-gradient(circle at 35% 25%, #fff 0%, ${CYAN} 55%, ${BLUE} 100%)`, boxShadow: `0 0 12px ${CYAN}, 0 2px 4px rgba(0,20,60,0.5), inset 0 1px 0 rgba(255,255,255,0.8)`, border: "1px solid rgba(0,80,180,0.6)" }} />
               </div>
             </div>
           </div>
 
           {/* Controls */}
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <button onClick={onShuffle} style={{ ...xpBtn(player.shuffle), padding: "6px 14px", borderRadius: 3, fontSize: 11, gap: 5, display: "flex", alignItems: "center" }}>
-              <Shuffle size={13} /><span>Shuffle</span>
-            </button>
-            <button onClick={onPrev} disabled={player.queuePos === 0 && !player.shuffle} style={{ ...xpBtn(), padding: "8px 18px", borderRadius: 3, fontSize: 11, gap: 5, display: "flex", alignItems: "center", opacity: player.queuePos === 0 && !player.shuffle ? 0.35 : 1 }}>
-              <SkipBack size={16} fill="currentColor" strokeWidth={0} />
-            </button>
-            <button onClick={onTogglePlay} style={{ ...xpBtn(true), padding: "10px 24px", borderRadius: 4, fontSize: 13, gap: 6, display: "flex", alignItems: "center", boxShadow: `inset 0 1px 0 rgba(255,255,255,0.25), 0 0 20px rgba(26,108,216,0.4), 0 2px 6px rgba(0,0,0,0.6)` }}>
-              {player.isPlaying ? <Pause size={20} fill="currentColor" strokeWidth={0} /> : <Play size={20} fill="currentColor" strokeWidth={0} />}
-            </button>
-            <button onClick={onNext} style={{ ...xpBtn(), padding: "8px 18px", borderRadius: 3, display: "flex", alignItems: "center" }}>
-              <SkipForward size={16} fill="currentColor" strokeWidth={0} />
-            </button>
+          <div style={{ display: "flex", gap: 12, alignItems: "center", justifyContent: "center" }}>
+            <AeroOrb onClick={onShuffle} active={player.shuffle} size={38}><Shuffle size={15} /></AeroOrb>
+            <AeroOrb onClick={onPrev} disabled={player.queuePos === 0 && !player.shuffle} size={46}><SkipBack size={20} fill="currentColor" strokeWidth={0} /></AeroOrb>
+            <AeroOrb onClick={onTogglePlay} primary size={64}>
+              {player.isPlaying ? <Pause size={26} fill="currentColor" strokeWidth={0} /> : <Play size={26} fill="currentColor" strokeWidth={0} style={{ marginLeft: 3 }} />}
+            </AeroOrb>
+            <AeroOrb onClick={onNext} size={46}><SkipForward size={20} fill="currentColor" strokeWidth={0} /></AeroOrb>
+            <AeroOrb size={38}><Volume2 size={15} /></AeroOrb>
           </div>
 
           {/* Volume */}
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <button onClick={() => onVolume(player.volume === 0 ? 0.5 : 0)} style={{ color: DIM, background: "transparent", border: "none", cursor: "pointer" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <button onClick={() => onVolume(player.volume === 0 ? 0.5 : 0)} style={{ color: "#a8dcff", background: "transparent", border: "none", cursor: "pointer" }}>
               {player.volume === 0 ? <VolumeX size={16} /> : <Volume2 size={16} />}
             </button>
-            <input type="range" min={0} max={1} step={0.01} value={player.volume} onChange={e => onVolume(Number(e.target.value))} style={{ flex: 1, accentColor: BLUE, cursor: "pointer" }} />
-            <span style={{ fontSize: 11, color: DIM, minWidth: 32, fontVariantNumeric: "tabular-nums" }}>{Math.round(player.volume * 100)}%</span>
+            <input type="range" min={0} max={1} step={0.01} value={player.volume} onChange={e => onVolume(Number(e.target.value))} style={{ flex: 1, accentColor: CYAN, cursor: "pointer" }} />
+            <span style={{ fontSize: 12, color: "#a8dcff", minWidth: 36, fontVariantNumeric: "tabular-nums" }}>{Math.round(player.volume * 100)}%</span>
           </div>
         </div>
       </div>
 
-      {/* XP status bar */}
-      <div className="shrink-0 flex items-center gap-6 px-4 relative z-10"
-        style={{ height: 22, background: "rgba(6,8,22,0.98)", borderTop: "1px solid rgba(60,100,200,0.2)" }}>
+      {/* Aero status bar */}
+      <div className="shrink-0 flex items-center gap-6 px-5 relative z-10"
+        style={{
+          height: 28,
+          background: "linear-gradient(180deg, rgba(20,60,140,0.55) 0%, rgba(6,25,80,0.85) 100%)",
+          backdropFilter: "blur(20px)",
+          WebkitBackdropFilter: "blur(20px)",
+          borderTop: "1px solid rgba(180,225,255,0.3)",
+          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.15)",
+        }}>
         {[
           player.isPlaying ? "▶ Playing" : "⏸ Paused",
-          `Vol: ${Math.round(player.volume * 100)}%`,
+          `Volume: ${Math.round(player.volume * 100)}%`,
           player.shuffle ? "Shuffle: On" : "Shuffle: Off",
           `Queue: ${player.queue.length}`,
         ].map((s, i, arr) => (
-          <span key={i} style={{ fontSize: 10, color: DIM, paddingRight: i < arr.length - 1 ? 12 : 0, borderRight: i < arr.length - 1 ? "1px solid rgba(60,100,200,0.2)" : "none", marginRight: i < arr.length - 1 ? 12 : 0 }}>{s}</span>
+          <span key={i} style={{
+            fontSize: 11, color: "#c8ecff", letterSpacing: "0.04em",
+            paddingRight: i < arr.length - 1 ? 14 : 0,
+            borderRight: i < arr.length - 1 ? "1px solid rgba(180,225,255,0.2)" : "none",
+            marginRight: i < arr.length - 1 ? 14 : 0,
+            textShadow: "0 1px 1px rgba(0,20,60,0.5)",
+          }}>{s}</span>
         ))}
       </div>
     </div>
   );
 }
+
+
 
 function FullscreenUnique(props: FullscreenSharedProps) {
   const { project, track, player, onTogglePlay, onSeek, onVolume, onPrev, onNext, onShuffle, onClose, accentColor, liked, toggleLike } = props;
@@ -6430,14 +6778,20 @@ function NextUpPanel({ queue, queuePos, projects, onClose, onPlayAt, onRemove, l
   return (
     <div
       className="absolute right-0 top-0 bottom-0 z-50 flex flex-col border-l border-border shadow-2xl"
-      style={{ width: 320, background: "var(--popover)", backdropFilter: "blur(40px)", WebkitBackdropFilter: "blur(40px)" }}
+      style={
+        layoutTheme === "classic"
+          ? { width: 320, background: "linear-gradient(180deg, rgba(20,60,140,0.72) 0%, rgba(6,30,90,0.85) 100%)", backdropFilter: "blur(40px) saturate(200%)", WebkitBackdropFilter: "blur(40px) saturate(200%)", borderLeft: "1px solid rgba(200,235,255,0.4)", boxShadow: "inset 1px 0 0 rgba(255,255,255,0.15), -8px 0 32px rgba(0,20,60,0.6)" }
+          : layoutTheme === "modern"
+            ? { width: 320, background: "color-mix(in srgb, var(--popover) 45%, transparent)", backdropFilter: "blur(80px) saturate(220%)", WebkitBackdropFilter: "blur(80px) saturate(220%)", borderLeft: "1px solid color-mix(in srgb, var(--foreground) 10%, transparent)" }
+            : { width: 320, background: "var(--popover)", backdropFilter: "blur(40px)", WebkitBackdropFilter: "blur(40px)" }
+      }
     >
       {/* Header */}
       <div
         className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0"
         style={
-          layoutTheme === "modern" ? { background: "rgba(255,255,255,0.04)", backdropFilter: "blur(16px)" }
-          : layoutTheme === "classic" ? { background: "linear-gradient(180deg, color-mix(in srgb,var(--popover) 60%,#fff) 0%, var(--popover) 100%)" }
+          layoutTheme === "modern" ? { background: "color-mix(in srgb, var(--foreground) 4%, transparent)", backdropFilter: "blur(24px)" }
+          : layoutTheme === "classic" ? { background: "linear-gradient(180deg, rgba(160,220,255,0.35) 0%, rgba(30,110,220,0.45) 55%, rgba(10,70,180,0.55) 100%)", borderBottom: "1px solid rgba(200,235,255,0.4)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.35)" }
           : layoutTheme === "unique" ? { borderBottom: "2px solid var(--primary)", background: "rgba(0,0,0,0.95)" }
           : {}
         }
@@ -6764,115 +7118,127 @@ function PlayerBarModern({ project, track, player, onTogglePlay, onSeek, onVolum
 // ── Classic player bar: Windows XP + PS3 XMB style ───────────────────────
 function PlayerBarClassic({ project, track, player, onTogglePlay, onSeek, onVolume, onPrev, onNext, onShuffle, onExpand, onToggleNextUp, showNextUp, nav }: PlayerBarProps) {
   const progress = player.duration > 0 ? player.currentTime / player.duration : 0;
-  const BLUE = "#1a6cd8", LBLUE = "#4a9aff", DIM = "rgba(140,170,220,0.6)";
+  const CYAN = "#00c8ff", BLUE = "#1e8fef";
 
-  const XBtn = ({ onClick, children, active, disabled }: { onClick?:()=>void; children:React.ReactNode; active?:boolean; disabled?:boolean }) => (
+  // Aero glossy pill button
+  const AeroBtn = ({ onClick, children, active, disabled, size = 30, primary }: { onClick?:()=>void; children:React.ReactNode; active?:boolean; disabled?:boolean; size?:number; primary?:boolean }) => (
     <button onClick={onClick} disabled={disabled} style={{
-      padding: "4px 10px", height: 24, minWidth: 28,
-      background: active
-        ? `linear-gradient(180deg,#4a9ef0 0%,#1a6cd8 45%,#1050b0 100%)`
-        : "linear-gradient(180deg,#22244a 0%,#14162e 100%)",
-      border: `1px solid ${active ? "#0a4090" : "rgba(60,100,200,0.3)"}`,
-      borderRadius: 3,
-      boxShadow: active
-        ? "inset 0 1px 0 rgba(255,255,255,0.3), 0 0 8px rgba(26,108,216,0.4)"
-        : "inset 0 1px 0 rgba(255,255,255,0.06)",
-      color: active ? "#fff" : "rgba(180,200,240,0.8)",
+      width: size, height: size,
+      borderRadius: size / 2,
+      background: primary
+        ? `radial-gradient(circle at 50% 22%, rgba(255,255,255,0.85) 0%, rgba(180,235,255,0.9) 18%, ${CYAN} 45%, ${BLUE} 70%, #0b5cb8 100%)`
+        : active
+          ? `linear-gradient(180deg, rgba(180,235,255,0.9) 0%, ${CYAN} 45%, ${BLUE} 100%)`
+          : `linear-gradient(180deg, rgba(220,240,255,0.55) 0%, rgba(140,190,240,0.30) 48%, rgba(60,120,200,0.30) 50%, rgba(30,90,180,0.40) 100%)`,
+      border: `1px solid ${primary || active ? "rgba(0,60,140,0.85)" : "rgba(180,225,255,0.55)"}`,
+      boxShadow: primary
+        ? `inset 0 1px 0 rgba(255,255,255,0.95), inset 0 -3px 6px rgba(0,40,100,0.5), 0 0 14px rgba(0,180,255,0.7), 0 3px 8px rgba(0,40,120,0.6)`
+        : active
+          ? `inset 0 1px 0 rgba(255,255,255,0.7), 0 0 10px rgba(0,180,255,0.55), 0 2px 5px rgba(0,40,120,0.5)`
+          : `inset 0 1px 0 rgba(255,255,255,0.4), inset 0 -1px 0 rgba(0,20,60,0.3), 0 1px 3px rgba(0,20,60,0.4)`,
+      color: primary || active ? "#fff" : "rgba(230,244,255,0.92)",
       cursor: disabled ? "default" : "pointer",
       display: "flex", alignItems: "center", justifyContent: "center",
-      opacity: disabled ? 0.3 : 1,
-      fontFamily: "'Segoe UI',Tahoma,sans-serif", fontSize: 10,
-      transition: "all 0.12s ease",
-    }}>
-      {children}
+      opacity: disabled ? 0.35 : 1,
+      position: "relative", overflow: "hidden",
+      transition: "filter 0.12s ease, transform 0.1s ease, box-shadow 0.2s ease",
+    }}
+    onMouseEnter={e => { if (!disabled) e.currentTarget.style.filter = "brightness(1.15) saturate(1.1)"; }}
+    onMouseLeave={e => { e.currentTarget.style.filter = "brightness(1)"; }}
+    >
+      {/* Glossy top sheen */}
+      <span style={{ position: "absolute", top: 1, left: 1, right: 1, height: "48%", borderRadius: `${size/2}px ${size/2}px 50% 50% / ${size/2}px ${size/2}px 100% 100%`, background: "linear-gradient(180deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.08) 100%)", pointerEvents: "none" }} />
+      <span style={{ position: "relative", display: "flex", filter: `drop-shadow(0 1px 0 rgba(0,30,80,0.5))` }}>{children}</span>
     </button>
   );
 
   return (
     <div style={{
-      background: "linear-gradient(180deg,#0e0e28 0%,#080818 100%)",
-      borderTop: `2px solid ${BLUE}`,
-      boxShadow: `0 -4px 20px rgba(26,108,216,0.15)`,
+      position: "relative",
+      background: "linear-gradient(180deg, rgba(30,90,170,0.55) 0%, rgba(10,50,130,0.75) 55%, rgba(4,25,80,0.90) 100%)",
+      backdropFilter: "blur(32px) saturate(200%)",
+      WebkitBackdropFilter: "blur(32px) saturate(200%)",
+      borderTop: `1px solid rgba(200,235,255,0.55)`,
+      boxShadow: `inset 0 1px 0 rgba(255,255,255,0.4), 0 -8px 32px rgba(0,20,60,0.6), 0 -1px 0 rgba(0,180,255,0.3)`,
       fontFamily: "'Segoe UI',Tahoma,system-ui,sans-serif",
-      position: "relative", overflow: "hidden",
+      overflow: "hidden",
     }}>
-      {/* XP Luna accent line at top */}
-      <div style={{ height: 1, background: `linear-gradient(90deg,transparent 0%,${LBLUE} 30%,${LBLUE} 70%,transparent 100%)`, opacity: 0.6 }} />
+      {/* Top cyan glow line */}
+      <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 1, background: `linear-gradient(90deg, transparent 0%, ${CYAN} 25%, ${CYAN} 75%, transparent 100%)`, boxShadow: `0 0 6px ${CYAN}`, opacity: 0.75 }} />
+      {/* Sheen band */}
+      <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "42%", background: "linear-gradient(180deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.04) 100%)", pointerEvents: "none" }} />
 
-      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 10px" }}>
-        {/* Album art with XP inset frame */}
+      <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 12, padding: "9px 14px" }}>
+        {/* Album art — glass frame */}
         <div style={{
-          width: 44, height: 44, flexShrink: 0,
-          border: "2px solid rgba(60,100,200,0.35)",
-          borderTop: `2px solid ${LBLUE}`,
+          width: 46, height: 46, flexShrink: 0,
+          borderRadius: 8,
+          border: "1px solid rgba(200,235,255,0.55)",
           overflow: "hidden", cursor: "pointer",
-          boxShadow: `0 0 10px rgba(26,108,216,0.25), inset 0 1px 0 rgba(255,255,255,0.1)`,
+          boxShadow: `inset 0 1px 0 rgba(255,255,255,0.4), 0 0 12px rgba(0,180,255,0.35), 0 2px 6px rgba(0,20,60,0.6)`,
+          position: "relative",
         }} onClick={() => nav(`/project/${project.id}`)}>
           {project.coverDataUrl
-            ? <img src={project.coverDataUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-            : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: "#0a0c24" }}><Music size={16} style={{ color: LBLUE, opacity: 0.5 }} /></div>}
+            ? <img src={project.coverDataUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+            : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: "linear-gradient(180deg,#1a5fbe 0%,#082d70 100%)" }}><Music size={18} style={{ color: "#c8ecff", opacity: 0.85 }} /></div>}
+          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "45%", background: "linear-gradient(180deg, rgba(255,255,255,0.28) 0%, transparent 100%)", pointerEvents: "none" }} />
         </div>
 
-        {/* Track info panel — PS3 XMB style */}
-        <div style={{ minWidth: 0, flex: "0 0 180px", cursor: "pointer", padding: "3px 8px", background: "rgba(4,6,22,0.7)", border: "1px solid rgba(60,100,200,0.15)", borderTop: `1px solid rgba(80,130,255,0.25)` }}
-          onClick={() => nav(`/project/${project.id}`)}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: "#e8eaf0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{track.name}</div>
-          <div style={{ fontSize: 10, color: LBLUE, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", letterSpacing: "0.03em" }}>{project.artist || "Unknown"}</div>
+        {/* Track info */}
+        <div style={{ minWidth: 0, flex: "0 0 200px", cursor: "pointer" }} onClick={() => nav(`/project/${project.id}`)}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: "#f0f8ff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textShadow: "0 1px 2px rgba(0,20,60,0.5)" }}>{track.name}</div>
+          <div style={{ fontSize: 11, color: "#a8dcff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", letterSpacing: "0.02em" }}>{project.artist || "Unknown"}</div>
         </div>
 
-        {/* Progress */}
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 3, minWidth: 0 }}>
+        {/* Progress — Aero glass trough */}
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
           <div style={{
-            height: 14, background: "rgba(4,6,20,0.9)",
-            border: "1px solid rgba(60,100,200,0.2)", borderTop: "1px solid rgba(40,80,180,0.4)",
-            boxShadow: "inset 1px 1px 3px rgba(0,0,0,0.4)",
-            cursor: "pointer", position: "relative",
+            height: 12, borderRadius: 6,
+            background: "linear-gradient(180deg, rgba(0,10,40,0.75) 0%, rgba(0,20,60,0.55) 100%)",
+            border: "1px solid rgba(180,225,255,0.35)",
+            boxShadow: "inset 0 2px 4px rgba(0,10,40,0.55), inset 0 -1px 0 rgba(255,255,255,0.08)",
+            cursor: "pointer", position: "relative", overflow: "hidden",
           }} onClick={e => { const r = e.currentTarget.getBoundingClientRect(); onSeek(((e.clientX - r.left) / r.width) * player.duration); }}>
             <div style={{
               position: "absolute", left: 0, top: 0, bottom: 0,
               width: `${progress * 100}%`,
-              background: `linear-gradient(180deg,${LBLUE} 0%,${BLUE} 55%,rgba(10,50,160,0.9) 100%)`,
-              boxShadow: `0 0 6px ${BLUE}`,
+              background: `linear-gradient(180deg, rgba(200,240,255,0.95) 0%, ${CYAN} 45%, ${BLUE} 100%)`,
+              boxShadow: `0 0 10px ${CYAN}, inset 0 1px 0 rgba(255,255,255,0.65)`,
               transition: "width 0.1s linear",
+              borderRadius: 6,
             }}>
-              <div style={{ position: "absolute", inset: 0, top: 0, height: "50%", background: "rgba(255,255,255,0.18)" }} />
-              <div style={{ position: "absolute", right: 0, top: "50%", transform: "translateY(-50%)", width: 4, height: 10, background: "rgba(255,255,255,0.9)" }} />
+              <div style={{ position: "absolute", top: 1, left: 1, right: 1, height: "45%", background: "linear-gradient(180deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.05) 100%)", borderRadius: "5px 5px 50% 50% / 5px 5px 100% 100%" }} />
+              <div style={{ position: "absolute", right: -5, top: "50%", transform: "translateY(-50%)", width: 10, height: 10, borderRadius: "50%", background: `radial-gradient(circle at 40% 30%, #fff 0%, ${CYAN} 55%, ${BLUE} 100%)`, boxShadow: `0 0 8px ${CYAN}, 0 1px 2px rgba(0,20,60,0.5)`, border: "1px solid rgba(255,255,255,0.7)" }} />
             </div>
           </div>
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9, letterSpacing: "0.06em", fontVariantNumeric: "tabular-nums" }}>
-            <span style={{ color: LBLUE }}>{fmt(player.currentTime)}</span>
-            <span style={{ color: DIM }}>{fmt(player.duration)}</span>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, letterSpacing: "0.05em", fontVariantNumeric: "tabular-nums" }}>
+            <span style={{ color: "#a8dcff" }}>{fmt(player.currentTime)}</span>
+            <span style={{ color: "rgba(200,225,255,0.55)" }}>{fmt(player.duration)}</span>
           </div>
         </div>
 
         {/* Controls */}
-        <div style={{ display: "flex", gap: 3, alignItems: "center", flexShrink: 0 }}>
-          <XBtn onClick={onShuffle} active={player.shuffle}><Shuffle size={12} /></XBtn>
-          <XBtn onClick={onPrev} disabled={player.queuePos === 0 && !player.shuffle}><SkipBack size={14} fill="currentColor" strokeWidth={0} /></XBtn>
-          <XBtn onClick={onTogglePlay} active>
-            {player.isPlaying ? <Pause size={16} fill="currentColor" strokeWidth={0} /> : <Play size={16} fill="currentColor" strokeWidth={0} />}
-          </XBtn>
-          <XBtn onClick={onNext}><SkipForward size={14} fill="currentColor" strokeWidth={0} /></XBtn>
-          {onToggleNextUp && <XBtn onClick={onToggleNextUp} active={showNextUp}><ListMusic size={12} /></XBtn>}
-          <XBtn onClick={onExpand}><Maximize2 size={12} /></XBtn>
+        <div style={{ display: "flex", gap: 5, alignItems: "center", flexShrink: 0 }}>
+          <AeroBtn onClick={onShuffle} active={player.shuffle} size={26}><Shuffle size={12} /></AeroBtn>
+          <AeroBtn onClick={onPrev} disabled={player.queuePos === 0 && !player.shuffle} size={30}><SkipBack size={15} fill="currentColor" strokeWidth={0} /></AeroBtn>
+          <AeroBtn onClick={onTogglePlay} primary size={40}>
+            {player.isPlaying ? <Pause size={18} fill="currentColor" strokeWidth={0} /> : <Play size={18} fill="currentColor" strokeWidth={0} style={{ marginLeft: 2 }} />}
+          </AeroBtn>
+          <AeroBtn onClick={onNext} size={30}><SkipForward size={15} fill="currentColor" strokeWidth={0} /></AeroBtn>
+          {onToggleNextUp && <AeroBtn onClick={onToggleNextUp} active={showNextUp} size={26}><ListMusic size={12} /></AeroBtn>}
+          <AeroBtn onClick={onExpand} size={26}><Maximize2 size={11} /></AeroBtn>
         </div>
 
         {/* Volume */}
-        <div style={{ display: "flex", alignItems: "center", gap: 5, flexShrink: 0, borderLeft: "1px solid rgba(60,100,200,0.18)", paddingLeft: 8 }}>
-          <Volume2 size={12} style={{ color: DIM }} />
-          <input type="range" min={0} max={1} step={0.01} value={player.volume} onChange={e => onVolume(Number(e.target.value))} style={{ width: 56, accentColor: BLUE, cursor: "pointer" }} />
+        <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0, paddingLeft: 10, borderLeft: "1px solid rgba(180,225,255,0.25)" }}>
+          <Volume2 size={13} style={{ color: "#a8dcff" }} />
+          <input type="range" min={0} max={1} step={0.01} value={player.volume} onChange={e => onVolume(Number(e.target.value))} style={{ width: 64, accentColor: CYAN, cursor: "pointer" }} />
         </div>
-      </div>
-
-      {/* PS3-style status bar */}
-      <div style={{ display: "flex", gap: 12, padding: "1px 10px 3px", fontSize: 8, color: DIM, letterSpacing: "0.12em", borderTop: "1px solid rgba(60,100,200,0.08)" }}>
-        <span style={{ color: player.isPlaying ? LBLUE : DIM }}>{player.isPlaying ? "▶ PLAYING" : "⏸ PAUSED"}</span>
-        <span>QUEUE: {player.queue.length}</span>
-        <span>{player.shuffle ? "SHUFFLE ON" : "SHUFFLE OFF"}</span>
       </div>
     </div>
   );
 }
+
 
 // ── Unique player bar (Synthwave/Cyber) ────────────────────────────────────
 function PlayerBarUnique({ project, track, player, onTogglePlay, onSeek, onVolume, onPrev, onNext, onShuffle, onExpand, onToggleNextUp, showNextUp, nav }: PlayerBarProps) {
