@@ -961,6 +961,7 @@ function applyTheme(t: AppTheme) {
   for (const [k, v] of Object.entries(vars)) {
     root.style.setProperty(k, v);
   }
+  root.setAttribute("data-mode", t.mode);
   applyLayoutTheme(t.layoutTheme ?? "default");
   applyCustomThemeConfig(t.custom ?? DEFAULT_CUSTOM_CONFIG, t.accent);
 
