@@ -6778,14 +6778,20 @@ function NextUpPanel({ queue, queuePos, projects, onClose, onPlayAt, onRemove, l
   return (
     <div
       className="absolute right-0 top-0 bottom-0 z-50 flex flex-col border-l border-border shadow-2xl"
-      style={{ width: 320, background: "var(--popover)", backdropFilter: "blur(40px)", WebkitBackdropFilter: "blur(40px)" }}
+      style={
+        layoutTheme === "classic"
+          ? { width: 320, background: "linear-gradient(180deg, rgba(20,60,140,0.72) 0%, rgba(6,30,90,0.85) 100%)", backdropFilter: "blur(40px) saturate(200%)", WebkitBackdropFilter: "blur(40px) saturate(200%)", borderLeft: "1px solid rgba(200,235,255,0.4)", boxShadow: "inset 1px 0 0 rgba(255,255,255,0.15), -8px 0 32px rgba(0,20,60,0.6)" }
+          : layoutTheme === "modern"
+            ? { width: 320, background: "color-mix(in srgb, var(--popover) 45%, transparent)", backdropFilter: "blur(80px) saturate(220%)", WebkitBackdropFilter: "blur(80px) saturate(220%)", borderLeft: "1px solid color-mix(in srgb, var(--foreground) 10%, transparent)" }
+            : { width: 320, background: "var(--popover)", backdropFilter: "blur(40px)", WebkitBackdropFilter: "blur(40px)" }
+      }
     >
       {/* Header */}
       <div
         className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0"
         style={
-          layoutTheme === "modern" ? { background: "rgba(255,255,255,0.04)", backdropFilter: "blur(16px)" }
-          : layoutTheme === "classic" ? { background: "linear-gradient(180deg, color-mix(in srgb,var(--popover) 60%,#fff) 0%, var(--popover) 100%)" }
+          layoutTheme === "modern" ? { background: "color-mix(in srgb, var(--foreground) 4%, transparent)", backdropFilter: "blur(24px)" }
+          : layoutTheme === "classic" ? { background: "linear-gradient(180deg, rgba(160,220,255,0.35) 0%, rgba(30,110,220,0.45) 55%, rgba(10,70,180,0.55) 100%)", borderBottom: "1px solid rgba(200,235,255,0.4)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.35)" }
           : layoutTheme === "unique" ? { borderBottom: "2px solid var(--primary)", background: "rgba(0,0,0,0.95)" }
           : {}
         }
