@@ -4247,7 +4247,7 @@ function AudioVisualizer({ analyserRef, config, isPlaying, layoutTheme, accent }
       }
 
       // Resume AudioContext if suspended
-      if (analyser.context.state === "suspended") analyser.context.resume();
+      if (analyser.context.state === "suspended") (analyser.context as AudioContext).resume();
 
       const bufLen = analyser.frequencyBinCount;
       const freqData = new Uint8Array(bufLen);
