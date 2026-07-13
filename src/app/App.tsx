@@ -883,6 +883,21 @@ const LAYOUT_THEME_CSS: Record<LayoutTheme, string> = {
     [data-mode="light"] .bg-secondary { background: linear-gradient(180deg, rgba(255,255,255,0.7) 0%, rgba(220,240,255,0.7) 100%) !important; border: 1px solid rgba(150,200,240,0.5) !important; }
     [data-mode="light"] .bg-muted { background: rgba(220,235,250,0.7) !important; }
 
+    /* ── Settings tab bar (no bubble animation behind) ── */
+    .settings-tabs {
+      background: rgba(8,28,58,0.85) !important;
+      border: 1px solid rgba(180,225,255,0.25) !important;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.12) !important;
+    }
+    [data-mode="light"] .settings-tabs {
+      background: linear-gradient(180deg, rgba(255,255,255,0.85) 0%, rgba(220,240,255,0.85) 100%) !important;
+      border: 1px solid rgba(150,200,240,0.5) !important;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.9) !important;
+    }
+
+
     /* ── Borders ── */
     .border-border, .divide-border>*+* { border-color: rgba(180,225,255,0.25) !important; }
     [data-mode="light"] .border-border, [data-mode="light"] .divide-border>*+* { border-color: rgba(120,170,220,0.35) !important; }
@@ -1231,7 +1246,7 @@ function applyTheme(t: AppTheme) {
 function CassetteLogo({ size = 32 }: { size?: number }) {
   const h = Math.round(size * 0.65);
   return (
-    <svg width={size} height={h} viewBox="0 0 40 26" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Melodia">
+    <svg width={size} height={h} viewBox="0 0 40 26" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Wicked">
       {/* Body */}
       <rect x="0.75" y="0.75" width="38.5" height="24.5" rx="2.25" fill="currentColor" fillOpacity="0.14" stroke="currentColor" strokeWidth="1.5" />
       {/* Tape window */}
@@ -5307,7 +5322,7 @@ function SettingsView({ projects, setProjects, showToast, player, setPlayer, aud
       <h1 className="text-2xl font-bold tracking-tight mb-6">Settings</h1>
 
       {/* Quick access tabs */}
-      <div className="flex items-center gap-1 mb-8 p-1 bg-secondary rounded-lg overflow-x-auto scrollbar-hide">
+      <div className="settings-tabs flex items-center gap-1 mb-8 p-1 bg-secondary rounded-lg overflow-x-auto scrollbar-hide">
         {([
           { key: "theme", label: "Theme" },
           { key: "appearance", label: "Appearance" },
@@ -5820,8 +5835,8 @@ function SettingsView({ projects, setProjects, showToast, player, setPlayer, aud
         <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3">About</p>
         <div className="bg-card border border-border rounded-lg overflow-hidden divide-y divide-border">
           <div className="flex items-center justify-between px-5 py-4">
-            <p className="text-sm font-semibold">Melodia</p>
-            <p className="text-sm text-muted-foreground">v1.0</p>
+            <p className="text-sm font-semibold">Wicked</p>
+            <p className="text-sm text-muted-foreground">v4.2</p>
           </div>
           <div className="px-5 py-4">
             <p className="text-xs text-muted-foreground leading-relaxed">
@@ -6182,7 +6197,7 @@ function FullscreenClassic(props: FullscreenSharedProps) {
         <div className="flex items-center gap-2 relative">
           <div style={{ width: 16, height: 16, borderRadius: 8, background: "radial-gradient(circle at 40% 30%, #fff 0%, #7cd6ff 30%, #0080e0 100%)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.6), 0 0 6px rgba(0,180,255,0.6)" }} />
           <span style={{ fontSize: 13, fontWeight: 600, color: "#fff", textShadow: "0 1px 2px rgba(0,20,60,0.7)", letterSpacing: "0.01em" }}>
-            Melodia — Now Playing
+            Wicked — Now Playing
           </span>
         </div>
         <div className="flex items-center gap-1.5 relative">
