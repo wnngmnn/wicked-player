@@ -6942,61 +6942,106 @@ function PlayerBar(props: PlayerBarProps) {
 // ── Default player bar ─────────────────────────────────────────────────────
 function PlayerBarDefault({ project, track, player, onTogglePlay, onSeek, onVolume, onPrev, onNext, onShuffle, onExpand, onToggleNextUp, showNextUp, nav }: PlayerBarProps) {
   const progress = player.duration > 0 ? player.currentTime / player.duration : 0;
-  const [showVol, setShowVol] = useState(false);
   return (
-    <div className="shrink-0 border-t border-border bg-popover/95 backdrop-blur-3xl">
-      <div className="h-0.5 bg-border cursor-pointer group" onClick={e => { const r = e.currentTarget.getBoundingClientRect(); onSeek(((e.clientX-r.left)/r.width)*player.duration); }}>
-        <div className="h-full bg-primary transition-all relative" style={{ width: `${progress*100}%` }}>
-          <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-sm shadow-lg opacity-0 group-hover:opacity-100 transition-opacity" />
-        </div>
-      </div>
-      <div className="px-4 py-3 grid grid-cols-3 items-center gap-2">
+    <div
+      className="shrink-0 relative"
+      style={{
+        background: "color-mix(in srgb, var(--popover) 78%, transparent)",
+        backdropFilter: "blur(40px) saturate(180%)",
+        WebkitBackdropFilter: "blur(40px) saturate(180%)",
+        borderTop: "1px solid color-mix(in srgb, var(--foreground) 8%, transparent)",
+        boxShadow: "0 -1px 0 color-mix(in srgb, var(--foreground) 4%, transparent), 0 -12px 40px rgba(0,0,0,0.15)",
+      }}
+    >
+      <div className="px-4 py-2.5 grid grid-cols-[1fr_auto_1fr] items-center gap-4">
+        {/* Left: album art + info */}
         <div className="flex items-center gap-3 min-w-0 cursor-pointer" onClick={() => nav(`/project/${project.id}`)}>
-          <div className="w-11 h-11 shrink-0 rounded-md overflow-hidden bg-card border border-border">
-            {project.coverDataUrl ? <img src={project.coverDataUrl} alt={track.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center"><Music size={16} className="text-muted-foreground/40" /></div>}
+          <div
+            className="w-12 h-12 shrink-0 overflow-hidden bg-card"
+            style={{ boxShadow: "0 2px 8px rgba(0,0,0,0.25), 0 0 0 1px color-mix(in srgb, var(--foreground) 8%, transparent)" }}
+          >
+            {project.coverDataUrl
+              ? <img src={project.coverDataUrl} alt={track.name} className="w-full h-full object-cover" />
+              : <div className="w-full h-full flex items-center justify-center"><Music size={18} className="text-muted-foreground/40" /></div>}
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-semibold truncate leading-tight">{track.name}</p>
-            <p className="text-xs text-muted-foreground truncate mt-0.5">{project.artist || "Unknown"}</p>
+            <p className="text-[13px] font-semibold truncate leading-tight">{track.name}</p>
+            <p className="text-[11.5px] text-muted-foreground truncate mt-0.5">{project.artist || "Unknown"}</p>
           </div>
         </div>
-        <div className="flex flex-col items-center gap-1.5">
-          <div className="flex items-center gap-2">
-            <button onClick={onShuffle} className={`p-2 rounded-md transition-colors ${player.shuffle ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}><Shuffle size={15} /></button>
-            <button onClick={onPrev} disabled={player.queuePos===0&&!player.shuffle} className="p-2 text-muted-foreground hover:text-foreground transition-colors rounded-md disabled:opacity-30"><SkipBack size={19} /></button>
-            <button onClick={onTogglePlay} className="w-10 h-10 bg-primary hover:bg-primary/85 rounded-md flex items-center justify-center shadow-md shadow-primary/25 transition-all active:scale-95">
-              {player.isPlaying ? <Pause size={18} className="text-white" /> : <Play size={18} className="text-white ml-0.5" />}
+
+        {/* Center: playback + scrubber */}
+        <div className="flex flex-col items-center gap-1.5 w-[440px] max-w-full">
+          <div className="flex items-center gap-6">
+            <button onClick={onPrev} disabled={player.queuePos===0&&!player.shuffle}
+              className="text-foreground/85 hover:text-foreground transition-colors disabled:opacity-30 active:scale-95">
+              <SkipBack size={22} fill="currentColor" strokeWidth={0} />
             </button>
-            <button onClick={onNext} className="p-2 text-muted-foreground hover:text-foreground transition-colors rounded-md"><SkipForward size={19} /></button>
-            <div className="w-9" />
+            <button
+              onClick={onTogglePlay}
+              className="w-9 h-9 flex items-center justify-center text-foreground hover:scale-105 active:scale-95 transition-transform"
+              aria-label={player.isPlaying ? "Pause" : "Play"}
+            >
+              {player.isPlaying
+                ? <Pause size={28} fill="currentColor" strokeWidth={0} />
+                : <Play  size={28} fill="currentColor" strokeWidth={0} style={{ marginLeft: 2 }} />}
+            </button>
+            <button onClick={onNext}
+              className="text-foreground/85 hover:text-foreground transition-colors active:scale-95">
+              <SkipForward size={22} fill="currentColor" strokeWidth={0} />
+            </button>
           </div>
-          <div className="flex items-center gap-2 w-full max-w-xs">
-            <span className="text-xs text-muted-foreground tabular-nums w-8 text-right">{fmt(player.currentTime)}</span>
-            <div className="flex-1 h-1 bg-border rounded-sm cursor-pointer relative group" onClick={e => { const r=e.currentTarget.getBoundingClientRect(); onSeek(((e.clientX-r.left)/r.width)*player.duration); }}>
-              <div className="h-full bg-foreground/40 rounded-sm relative" style={{ width: `${progress*100}%` }}>
-                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-white rounded-sm shadow opacity-0 group-hover:opacity-100 transition-opacity" />
+          <div className="flex items-center gap-2.5 w-full">
+            <span className="text-[10.5px] text-muted-foreground tabular-nums w-9 text-right">{fmt(player.currentTime)}</span>
+            <div
+              className="flex-1 h-1 cursor-pointer relative group/bar"
+              style={{ background: "color-mix(in srgb, var(--foreground) 15%, transparent)" }}
+              onClick={e => { const r=e.currentTarget.getBoundingClientRect(); onSeek(((e.clientX-r.left)/r.width)*player.duration); }}
+            >
+              <div className="h-full relative" style={{ width: `${progress*100}%`, background: "color-mix(in srgb, var(--foreground) 75%, transparent)" }}>
+                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-foreground opacity-0 group-hover/bar:opacity-100 transition-opacity" style={{ transform: "translate(50%,-50%)" }} />
               </div>
             </div>
-            <span className="text-xs text-muted-foreground tabular-nums w-8">{fmt(player.duration)}</span>
+            <span className="text-[10.5px] text-muted-foreground tabular-nums w-9">-{fmt(Math.max(0, player.duration - player.currentTime))}</span>
           </div>
         </div>
-        <div className="flex items-center justify-end gap-1.5">
-          <button onClick={() => setShowVol(v => !v)} className="p-2 text-muted-foreground hover:text-foreground transition-colors rounded-md">
-            {player.volume === 0 ? <VolumeX size={17} /> : <Volume2 size={17} />}
+
+        {/* Right: shuffle / queue / volume / fullscreen */}
+        <div className="flex items-center justify-end gap-3">
+          <button onClick={onShuffle}
+            className="transition-colors"
+            style={{ color: player.shuffle ? "var(--primary)" : "color-mix(in srgb, var(--foreground) 55%, transparent)" }}
+            title="Shuffle">
+            <Shuffle size={16} />
           </button>
-          <div className={`transition-all overflow-hidden ${showVol ? "w-24" : "w-0"}`}>
-            <input type="range" min={0} max={1} step={0.01} value={player.volume} onChange={e => onVolume(Number(e.target.value))} className="w-full accent-primary cursor-pointer" />
-          </div>
           {onToggleNextUp && (
             <button
               onClick={onToggleNextUp}
-              className={`p-2 transition-colors rounded-md ${showNextUp ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"}`}
-              title="Next Up"
+              className="transition-colors"
+              style={{ color: showNextUp ? "var(--primary)" : "color-mix(in srgb, var(--foreground) 55%, transparent)" }}
+              title="Playing Next"
             >
-              <ListMusic size={15} />
+              <ListMusic size={16} />
             </button>
           )}
-          <button onClick={onExpand} className="p-2 text-muted-foreground hover:text-foreground transition-colors rounded-md" title="Fullscreen"><Maximize2 size={15} /></button>
+          <div className="flex items-center gap-2">
+            <Volume2 size={14} style={{ color: "color-mix(in srgb, var(--foreground) 55%, transparent)" }} />
+            <div
+              className="h-1 cursor-pointer relative group/vol"
+              style={{ width: 88, background: "color-mix(in srgb, var(--foreground) 15%, transparent)" }}
+              onClick={e => { const r = e.currentTarget.getBoundingClientRect(); onVolume(Math.max(0, Math.min(1, (e.clientX - r.left) / r.width))); }}
+            >
+              <div className="h-full relative" style={{ width: `${player.volume * 100}%`, background: "color-mix(in srgb, var(--foreground) 75%, transparent)" }}>
+                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-foreground opacity-0 group-hover/vol:opacity-100 transition-opacity" style={{ transform: "translate(50%,-50%)" }} />
+              </div>
+            </div>
+          </div>
+          <button onClick={onExpand}
+            className="transition-colors"
+            style={{ color: "color-mix(in srgb, var(--foreground) 55%, transparent)" }}
+            title="Fullscreen">
+            <Maximize2 size={15} />
+          </button>
         </div>
       </div>
     </div>
