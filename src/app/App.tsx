@@ -6542,39 +6542,43 @@ function FullscreenPlayer({
       {/* ── Fully opaque background ── */}
       <div className="absolute inset-0 overflow-hidden">
         <FsBackground project={project} accentColor={accentColor} fsBg={sharedProps.fsBg} analyserRef={sharedProps.analyserRef} isPlaying={player.isPlaying} />
+        {/* Apple Music-style darkening veil */}
+        <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(0,0,0,0.25) 0%, rgba(0,0,0,0.55) 100%)" }} />
       </div>
 
       {/* ── Content ── */}
-      <div className="relative z-10 flex flex-col h-full text-white max-w-lg mx-auto w-full px-8 pb-10">
+      <div className="relative z-10 flex flex-col h-full text-white max-w-xl mx-auto w-full px-8 pb-10">
 
-        {/* Top bar */}
-        <div className="flex items-center justify-between pt-6 pb-2">
+        {/* Top bar — minimal grab handle + label */}
+        <div className="flex items-center justify-between pt-5 pb-4">
           <button
             onClick={onClose}
-            className="flex items-center gap-1.5 text-white/60 hover:text-white transition-colors text-sm font-semibold"
+            className="p-1.5 text-white/60 hover:text-white transition-colors"
+            aria-label="Close fullscreen player"
           >
-            <ChevronDown size={22} />
+            <ChevronDown size={26} strokeWidth={2.5} />
           </button>
-          <div className="text-center">
-            <p className="text-xs font-bold text-white/40 uppercase tracking-widest">Now Playing</p>
-          </div>
-          <div className="w-10" />
+          <div className="absolute left-1/2 -translate-x-1/2 top-6 w-9 h-1 bg-white/25" />
+          <div className="w-8" />
         </div>
 
-        {/* Album art */}
+        {/* Album art — large square, sharp corners */}
         <div className="flex-1 flex items-center justify-center py-2 min-h-0 relative">
-          {/* Ambient glow */}
-          <div className="absolute rounded-full blur-3xl opacity-40 scale-125 pointer-events-none" style={{ background: `rgb(${accentColor})`, width: "60%", paddingTop: "60%", top: "5%", left: "20%" }} />
           <div
-            className="relative aspect-square rounded-2xl overflow-hidden shadow-[0_30px_80px_rgba(0,0,0,0.7)] transition-transform duration-300"
-            style={{ width: "min(100%, 460px)", maxHeight: "100%" }}
+            className="absolute rounded-full blur-3xl opacity-45 scale-110 pointer-events-none"
+            style={{ background: `rgb(${accentColor})`, width: "62%", paddingTop: "62%", top: "8%", left: "19%" }}
+          />
+          <div
+            className="relative aspect-square overflow-hidden transition-transform duration-500"
+            style={{
+              width: "min(100%, 460px)",
+              maxHeight: "100%",
+              boxShadow: "0 30px 80px rgba(0,0,0,0.65), 0 10px 30px rgba(0,0,0,0.4)",
+              transform: player.isPlaying ? "scale(1)" : "scale(0.86)",
+            }}
           >
             {hasCover ? (
-              <img
-                src={project.coverDataUrl!}
-                alt={project.name}
-                className="w-full h-full object-cover"
-              />
+              <img src={project.coverDataUrl!} alt={project.name} className="w-full h-full object-cover" />
             ) : (
               <div className="w-full h-full bg-white/10 flex items-center justify-center">
                 <Music size={80} className="text-white/30" />
@@ -6583,65 +6587,73 @@ function FullscreenPlayer({
           </div>
         </div>
 
-        {/* Track info */}
-        <div className="mb-5 flex items-start justify-between gap-3">
+        {/* Track info + like — Apple Music alignment */}
+        <div className="mt-8 mb-4 flex items-center justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <h2 className="text-2xl font-extrabold truncate leading-tight">{track.name}</h2>
-            <p className="text-white/70 font-semibold mt-1 truncate">{project.artist || "Unknown Artist"}</p>
-            {!project.isSingle && (
-              <p className="text-white/40 text-sm mt-0.5 truncate">{project.name}</p>
-            )}
+            <h2 className="text-[22px] font-bold truncate leading-tight tracking-tight">{track.name}</h2>
+            <p className="text-white/65 text-[16px] font-medium mt-0.5 truncate">{project.artist || "Unknown Artist"}</p>
           </div>
           {toggleLike && (
             <button
               onClick={() => toggleLike(project.id, track.id)}
-              className={`p-2 rounded-lg transition-all active:scale-90 shrink-0 mt-1 ${liked ? "text-red-400" : "text-white/40 hover:text-red-400"}`}
+              className={`w-9 h-9 flex items-center justify-center transition-all active:scale-90 shrink-0 ${liked ? "text-red-400" : "text-white/70 hover:text-white"}`}
+              style={{ background: "rgba(255,255,255,0.08)" }}
+              aria-label={liked ? "Unlike" : "Like"}
             >
-              <Heart size={24} fill={liked ? "currentColor" : "none"} strokeWidth={liked ? 0 : 1.5} />
+              <Heart size={17} fill={liked ? "currentColor" : "none"} strokeWidth={liked ? 0 : 2} />
             </button>
           )}
         </div>
 
         {/* Scrubber */}
-        <div className="mb-1">
+        <div className="mb-6">
           <FullscreenScrubber
             current={player.currentTime}
             total={player.duration}
             onSeek={onSeek}
           />
-          <div className="flex justify-between text-xs text-white/40 font-medium -mt-1">
-            <span className="tabular-nums">{fmt(player.currentTime)}</span>
-            <span className="tabular-nums">{fmt(player.duration)}</span>
+          <div className="flex justify-between text-[11px] text-white/55 font-medium tabular-nums -mt-0.5">
+            <span>{fmt(player.currentTime)}</span>
+            <span>-{fmt(Math.max(0, player.duration - player.currentTime))}</span>
           </div>
         </div>
 
-        {/* Main controls */}
-        <div className="flex items-center justify-between mt-4 mb-6">
-          <FsBtn onClick={onShuffle} variant={player.shuffle ? "active" : "ghost"} size="sm">
-            <Shuffle size={20} style={{ color: player.shuffle ? "#fff" : "rgba(255,255,255,0.45)" }} />
-          </FsBtn>
-          <FsBtn onClick={onPrev} disabled={player.queuePos === 0 && !player.shuffle}>
-            <SkipBack size={36} fill="currentColor" strokeWidth={0} />
-          </FsBtn>
-          <FsBtn onClick={onTogglePlay} variant="primary" size="lg">
+        {/* Main controls — big square play, prev/next flanking */}
+        <div className="flex items-center justify-center gap-14 mb-8">
+          <button
+            onClick={onPrev}
+            disabled={player.queuePos === 0 && !player.shuffle}
+            className="text-white/90 hover:text-white transition-colors disabled:opacity-30 active:scale-90"
+            aria-label="Previous"
+          >
+            <SkipBack size={40} fill="currentColor" strokeWidth={0} />
+          </button>
+          <button
+            onClick={onTogglePlay}
+            className="w-14 h-14 flex items-center justify-center text-white active:scale-92 transition-transform"
+            aria-label={player.isPlaying ? "Pause" : "Play"}
+          >
             {player.isPlaying
-              ? <Pause size={34} fill="currentColor" strokeWidth={0} />
-              : <Play  size={34} fill="currentColor" strokeWidth={0} style={{ marginLeft: 3 }} />}
-          </FsBtn>
-          <FsBtn onClick={onNext}>
-            <SkipForward size={36} fill="currentColor" strokeWidth={0} />
-          </FsBtn>
-          {/* spacer mirrors shuffle button */}
-          <div className="w-[38px]" />
+              ? <Pause size={52} fill="currentColor" strokeWidth={0} />
+              : <Play  size={52} fill="currentColor" strokeWidth={0} style={{ marginLeft: 3 }} />}
+          </button>
+          <button
+            onClick={onNext}
+            className="text-white/90 hover:text-white transition-colors active:scale-90"
+            aria-label="Next"
+          >
+            <SkipForward size={40} fill="currentColor" strokeWidth={0} />
+          </button>
         </div>
 
         {/* Volume */}
         <div className="flex items-center gap-3">
           <button
-            onClick={() => onVolume(player.volume === 0 ? 0.5 : 0)}
-            className="text-white/40 hover:text-white transition-colors shrink-0"
+            onClick={() => onVolume(0)}
+            className="text-white/55 hover:text-white transition-colors shrink-0"
+            aria-label="Mute"
           >
-            {player.volume === 0 ? <VolumeX size={18} /> : <Volume2 size={18} />}
+            <VolumeX size={16} />
           </button>
           <input
             type="range"
@@ -6651,9 +6663,22 @@ function FullscreenPlayer({
             value={player.volume}
             onChange={e => onVolume(Number(e.target.value))}
             className="flex-1 cursor-pointer"
-            style={{ accentColor: "rgba(255,255,255,0.85)" }}
+            style={{ accentColor: "rgba(255,255,255,0.9)" }}
           />
-          <Volume2 size={18} className="text-white/70 shrink-0" />
+          <button
+            onClick={() => onVolume(1)}
+            className="text-white/85 hover:text-white transition-colors shrink-0"
+            aria-label="Full volume"
+          >
+            <Volume2 size={16} />
+          </button>
+          <button onClick={onShuffle}
+            className="ml-2 shrink-0 transition-colors"
+            style={{ color: player.shuffle ? "#fff" : "rgba(255,255,255,0.45)" }}
+            aria-label="Shuffle"
+          >
+            <Shuffle size={16} />
+          </button>
         </div>
       </div>
     </div>
