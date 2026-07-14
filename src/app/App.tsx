@@ -6984,13 +6984,14 @@ function PlayerBarDefault({ project, track, player, onTogglePlay, onSeek, onVolu
         {/* Left: album art + info */}
         <div className="flex items-center gap-3 min-w-0 cursor-pointer" onClick={() => nav(`/project/${project.id}`)}>
           <div
-            className="w-12 h-12 shrink-0 overflow-hidden bg-card"
+            className="w-12 h-12 shrink-0 overflow-hidden rounded-md bg-card transition-transform duration-300 ease-out hover:scale-[1.04]"
             style={{ boxShadow: "0 2px 8px rgba(0,0,0,0.25), 0 0 0 1px color-mix(in srgb, var(--foreground) 8%, transparent)" }}
           >
             {project.coverDataUrl
               ? <img src={project.coverDataUrl} alt={track.name} className="w-full h-full object-cover" />
               : <div className="w-full h-full flex items-center justify-center"><Music size={18} className="text-muted-foreground/40" /></div>}
           </div>
+
           <div className="min-w-0">
             <p className="text-[13px] font-semibold truncate leading-tight">{track.name}</p>
             <p className="text-[11.5px] text-muted-foreground truncate mt-0.5">{project.artist || "Unknown"}</p>
