@@ -7056,14 +7056,15 @@ function PlayerBarDefault({ project, track, player, onTogglePlay, onSeek, onVolu
           <div className="flex items-center gap-2">
             <Volume2 size={14} style={{ color: "color-mix(in srgb, var(--foreground) 55%, transparent)" }} />
             <div
-              className="h-1 cursor-pointer relative group/vol"
+              className="h-1 cursor-pointer relative group/vol rounded-full overflow-hidden"
               style={{ width: 88, background: "color-mix(in srgb, var(--foreground) 15%, transparent)" }}
               onClick={e => { const r = e.currentTarget.getBoundingClientRect(); onVolume(Math.max(0, Math.min(1, (e.clientX - r.left) / r.width))); }}
             >
-              <div className="h-full relative" style={{ width: `${player.volume * 100}%`, background: "color-mix(in srgb, var(--foreground) 75%, transparent)" }}>
-                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-foreground opacity-0 group-hover/vol:opacity-100 transition-opacity" style={{ transform: "translate(50%,-50%)" }} />
+              <div className="h-full relative rounded-full transition-[width] duration-150 ease-out" style={{ width: `${player.volume * 100}%`, background: "color-mix(in srgb, var(--foreground) 75%, transparent)" }}>
+                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-foreground opacity-0 group-hover/vol:opacity-100 transition-opacity" style={{ transform: "translate(50%,-50%)" }} />
               </div>
             </div>
+
           </div>
           <button onClick={onExpand}
             className="transition-colors"
