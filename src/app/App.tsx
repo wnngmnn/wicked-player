@@ -7022,15 +7022,16 @@ function PlayerBarDefault({ project, track, player, onTogglePlay, onSeek, onVolu
           <div className="flex items-center gap-2.5 w-full">
             <span className="text-[10.5px] text-muted-foreground tabular-nums w-9 text-right">{fmt(player.currentTime)}</span>
             <div
-              className="flex-1 h-1 cursor-pointer relative group/bar"
+              className="flex-1 h-1 cursor-pointer relative group/bar rounded-full overflow-hidden"
               style={{ background: "color-mix(in srgb, var(--foreground) 15%, transparent)" }}
               onClick={e => { const r=e.currentTarget.getBoundingClientRect(); onSeek(((e.clientX-r.left)/r.width)*player.duration); }}
             >
-              <div className="h-full relative" style={{ width: `${progress*100}%`, background: "color-mix(in srgb, var(--foreground) 75%, transparent)" }}>
-                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-foreground opacity-0 group-hover/bar:opacity-100 transition-opacity" style={{ transform: "translate(50%,-50%)" }} />
+              <div className="h-full relative rounded-full transition-[width] duration-150 ease-out" style={{ width: `${progress*100}%`, background: "color-mix(in srgb, var(--foreground) 75%, transparent)" }}>
+                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-foreground opacity-0 group-hover/bar:opacity-100 transition-opacity" style={{ transform: "translate(50%,-50%)" }} />
               </div>
             </div>
             <span className="text-[10.5px] text-muted-foreground tabular-nums w-9">-{fmt(Math.max(0, player.duration - player.currentTime))}</span>
+
           </div>
         </div>
 
