@@ -6569,7 +6569,7 @@ function FullscreenPlayer({
             style={{ background: `rgb(${accentColor})`, width: "62%", paddingTop: "62%", top: "8%", left: "19%" }}
           />
           <div
-            className="relative aspect-square overflow-hidden transition-transform duration-500"
+            className="relative aspect-square overflow-hidden rounded-xl transition-transform duration-500 ease-out"
             style={{
               width: "min(100%, 460px)",
               maxHeight: "100%",
@@ -6586,6 +6586,7 @@ function FullscreenPlayer({
             )}
           </div>
         </div>
+
 
         {/* Track info + like — Apple Music alignment */}
         <div className="mt-8 mb-4 flex items-center justify-between gap-3">
