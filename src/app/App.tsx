@@ -6569,7 +6569,7 @@ function FullscreenPlayer({
             style={{ background: `rgb(${accentColor})`, width: "62%", paddingTop: "62%", top: "8%", left: "19%" }}
           />
           <div
-            className="relative aspect-square overflow-hidden transition-transform duration-500"
+            className="relative aspect-square overflow-hidden rounded-xl transition-transform duration-500 ease-out"
             style={{
               width: "min(100%, 460px)",
               maxHeight: "100%",
@@ -6587,6 +6587,7 @@ function FullscreenPlayer({
           </div>
         </div>
 
+
         {/* Track info + like — Apple Music alignment */}
         <div className="mt-8 mb-4 flex items-center justify-between gap-3">
           <div className="min-w-0 flex-1">
@@ -6596,13 +6597,14 @@ function FullscreenPlayer({
           {toggleLike && (
             <button
               onClick={() => toggleLike(project.id, track.id)}
-              className={`w-9 h-9 flex items-center justify-center transition-all active:scale-90 shrink-0 ${liked ? "text-red-400" : "text-white/70 hover:text-white"}`}
+              className={`w-9 h-9 rounded-full flex items-center justify-center transition-all duration-200 ease-out hover:scale-110 active:scale-90 shrink-0 ${liked ? "text-red-400" : "text-white/70 hover:text-white"}`}
               style={{ background: "rgba(255,255,255,0.08)" }}
               aria-label={liked ? "Unlike" : "Like"}
             >
               <Heart size={17} fill={liked ? "currentColor" : "none"} strokeWidth={liked ? 0 : 2} />
             </button>
           )}
+
         </div>
 
         {/* Scrubber */}
@@ -6982,13 +6984,14 @@ function PlayerBarDefault({ project, track, player, onTogglePlay, onSeek, onVolu
         {/* Left: album art + info */}
         <div className="flex items-center gap-3 min-w-0 cursor-pointer" onClick={() => nav(`/project/${project.id}`)}>
           <div
-            className="w-12 h-12 shrink-0 overflow-hidden bg-card"
+            className="w-12 h-12 shrink-0 overflow-hidden rounded-md bg-card transition-transform duration-300 ease-out hover:scale-[1.04]"
             style={{ boxShadow: "0 2px 8px rgba(0,0,0,0.25), 0 0 0 1px color-mix(in srgb, var(--foreground) 8%, transparent)" }}
           >
             {project.coverDataUrl
               ? <img src={project.coverDataUrl} alt={track.name} className="w-full h-full object-cover" />
               : <div className="w-full h-full flex items-center justify-center"><Music size={18} className="text-muted-foreground/40" /></div>}
           </div>
+
           <div className="min-w-0">
             <p className="text-[13px] font-semibold truncate leading-tight">{track.name}</p>
             <p className="text-[11.5px] text-muted-foreground truncate mt-0.5">{project.artist || "Unknown"}</p>
@@ -7019,15 +7022,16 @@ function PlayerBarDefault({ project, track, player, onTogglePlay, onSeek, onVolu
           <div className="flex items-center gap-2.5 w-full">
             <span className="text-[10.5px] text-muted-foreground tabular-nums w-9 text-right">{fmt(player.currentTime)}</span>
             <div
-              className="flex-1 h-1 cursor-pointer relative group/bar"
+              className="flex-1 h-1 cursor-pointer relative group/bar rounded-full overflow-hidden"
               style={{ background: "color-mix(in srgb, var(--foreground) 15%, transparent)" }}
               onClick={e => { const r=e.currentTarget.getBoundingClientRect(); onSeek(((e.clientX-r.left)/r.width)*player.duration); }}
             >
-              <div className="h-full relative" style={{ width: `${progress*100}%`, background: "color-mix(in srgb, var(--foreground) 75%, transparent)" }}>
-                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-foreground opacity-0 group-hover/bar:opacity-100 transition-opacity" style={{ transform: "translate(50%,-50%)" }} />
+              <div className="h-full relative rounded-full transition-[width] duration-150 ease-out" style={{ width: `${progress*100}%`, background: "color-mix(in srgb, var(--foreground) 75%, transparent)" }}>
+                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-foreground opacity-0 group-hover/bar:opacity-100 transition-opacity" style={{ transform: "translate(50%,-50%)" }} />
               </div>
             </div>
             <span className="text-[10.5px] text-muted-foreground tabular-nums w-9">-{fmt(Math.max(0, player.duration - player.currentTime))}</span>
+
           </div>
         </div>
 
@@ -7052,14 +7056,15 @@ function PlayerBarDefault({ project, track, player, onTogglePlay, onSeek, onVolu
           <div className="flex items-center gap-2">
             <Volume2 size={14} style={{ color: "color-mix(in srgb, var(--foreground) 55%, transparent)" }} />
             <div
-              className="h-1 cursor-pointer relative group/vol"
+              className="h-1 cursor-pointer relative group/vol rounded-full overflow-hidden"
               style={{ width: 88, background: "color-mix(in srgb, var(--foreground) 15%, transparent)" }}
               onClick={e => { const r = e.currentTarget.getBoundingClientRect(); onVolume(Math.max(0, Math.min(1, (e.clientX - r.left) / r.width))); }}
             >
-              <div className="h-full relative" style={{ width: `${player.volume * 100}%`, background: "color-mix(in srgb, var(--foreground) 75%, transparent)" }}>
-                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-foreground opacity-0 group-hover/vol:opacity-100 transition-opacity" style={{ transform: "translate(50%,-50%)" }} />
+              <div className="h-full relative rounded-full transition-[width] duration-150 ease-out" style={{ width: `${player.volume * 100}%`, background: "color-mix(in srgb, var(--foreground) 75%, transparent)" }}>
+                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-foreground opacity-0 group-hover/vol:opacity-100 transition-opacity" style={{ transform: "translate(50%,-50%)" }} />
               </div>
             </div>
+
           </div>
           <button onClick={onExpand}
             className="transition-colors"
