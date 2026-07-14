@@ -6597,13 +6597,14 @@ function FullscreenPlayer({
           {toggleLike && (
             <button
               onClick={() => toggleLike(project.id, track.id)}
-              className={`w-9 h-9 flex items-center justify-center transition-all active:scale-90 shrink-0 ${liked ? "text-red-400" : "text-white/70 hover:text-white"}`}
+              className={`w-9 h-9 rounded-full flex items-center justify-center transition-all duration-200 ease-out hover:scale-110 active:scale-90 shrink-0 ${liked ? "text-red-400" : "text-white/70 hover:text-white"}`}
               style={{ background: "rgba(255,255,255,0.08)" }}
               aria-label={liked ? "Unlike" : "Like"}
             >
               <Heart size={17} fill={liked ? "currentColor" : "none"} strokeWidth={liked ? 0 : 2} />
             </button>
           )}
+
         </div>
 
         {/* Scrubber */}
