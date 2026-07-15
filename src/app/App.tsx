@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useLayoutEffect } from "react";
+import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
 import {
   Plus, Play, Pause, SkipBack, SkipForward, Volume2, VolumeX,
@@ -6,7 +7,7 @@ import {
   Music, Shuffle, ImagePlus, Link2, ListMusic,
   Library, User, Settings, PanelLeftClose, PanelLeftOpen, Home,
   Search, GripVertical, LayoutList, Maximize2, ChevronDown, ArrowUpDown,
-  Heart, Star, Globe, Lock, Calendar
+  Heart, Star, Globe, Lock, Unlock, Calendar
 } from "lucide-react";
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -2850,13 +2851,15 @@ function TrackList({
 }) {
   const dragIdx = useRef<number | null>(null);
   const [overIdx, setOverIdx] = useState<number | null>(null);
+  const [locked, setLocked] = useState(true);
 
   // Project queue: all tracks in this project
   const projectQueue = tracks.map((_, i) => ({ projectId, trackIndex: i }));
 
-  const onDragStart = (idx: number) => { dragIdx.current = idx; };
-  const onDragOver = (e: React.DragEvent, idx: number) => { e.preventDefault(); setOverIdx(idx); };
+  const onDragStart = (idx: number) => { if (locked) return; dragIdx.current = idx; };
+  const onDragOver = (e: React.DragEvent, idx: number) => { if (locked) return; e.preventDefault(); setOverIdx(idx); };
   const onDrop = (e: React.DragEvent, idx: number) => {
+    if (locked) return;
     e.preventDefault();
     if (dragIdx.current === null || dragIdx.current === idx) { dragIdx.current = null; setOverIdx(null); return; }
     const reordered = [...tracks];
@@ -2869,66 +2872,109 @@ function TrackList({
   const onDragEnd = () => { dragIdx.current = null; setOverIdx(null); };
 
   return (
-    <div className="rounded-lg border border-border overflow-hidden">
-      {tracks.map((track, idx) => (
-        <TrackRow
-          key={track.id}
-          track={track}
-          index={idx}
-          isActive={player.projectId === projectId && player.trackIndex === idx}
-          isPlaying={player.projectId === projectId && player.trackIndex === idx && player.isPlaying}
-          isLast={idx === tracks.length - 1}
-          isDragOver={overIdx === idx}
-          onPlay={() => playTrack(projectId, idx, projectQueue, idx)}
-          onDelete={() => onDelete(track)}
-          isEditing={editingTrackId === track.id}
-          editingName={editingName}
-          onStartEdit={() => onStartEdit(track)}
-          onEditName={onEditName}
-          onSaveEdit={() => onSaveEdit(track)}
-          onCancelEdit={onCancelEdit}
-          onDragStart={() => onDragStart(idx)}
-          onDragOver={e => onDragOver(e, idx)}
-          onDrop={e => onDrop(e, idx)}
-          onDragEnd={onDragEnd}
-          liked={isLiked ? isLiked(projectId, track.id) : undefined}
-          onToggleLike={toggleLike ? () => toggleLike(projectId, track.id) : undefined}
-          onAddToFront={addToFront ? () => addToFront(projectId, idx) : undefined}
-          onAddToBack={addToBack ? () => addToBack(projectId, idx) : undefined}
-        />
-      ))}
+    <div className="space-y-2">
+      <div className="flex items-center justify-end">
+        <button
+          onClick={() => setLocked(v => !v)}
+          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-semibold border transition-all active:scale-95 ${
+            locked
+              ? "border-border text-muted-foreground hover:text-foreground hover:border-primary/40"
+              : "border-primary/50 text-primary bg-primary/10 hover:bg-primary/15"
+          }`}
+          title={locked ? "Unlock to reorder tracks" : "Lock reordering"}
+        >
+          {locked ? <Lock size={11} /> : <Unlock size={11} />}
+          {locked ? "Reorder locked" : "Reorder unlocked"}
+        </button>
+      </div>
+      <div className={`rounded-lg border transition-colors ${locked ? "border-border" : "border-primary/40 ring-1 ring-primary/10"}`}>
+        {tracks.map((track, idx) => (
+          <TrackRow
+            key={track.id}
+            track={track}
+            index={idx}
+            isActive={player.projectId === projectId && player.trackIndex === idx}
+            isPlaying={player.projectId === projectId && player.trackIndex === idx && player.isPlaying}
+            isLast={idx === tracks.length - 1}
+            isDragOver={overIdx === idx}
+            reorderUnlocked={!locked}
+            onPlay={() => playTrack(projectId, idx, projectQueue, idx)}
+            onDelete={() => onDelete(track)}
+            isEditing={editingTrackId === track.id}
+            editingName={editingName}
+            onStartEdit={() => onStartEdit(track)}
+            onEditName={onEditName}
+            onSaveEdit={() => onSaveEdit(track)}
+            onCancelEdit={onCancelEdit}
+            onDragStart={() => onDragStart(idx)}
+            onDragOver={e => onDragOver(e, idx)}
+            onDrop={e => onDrop(e, idx)}
+            onDragEnd={onDragEnd}
+            liked={isLiked ? isLiked(projectId, track.id) : undefined}
+            onToggleLike={toggleLike ? () => toggleLike(projectId, track.id) : undefined}
+            onAddToFront={addToFront ? () => addToFront(projectId, idx) : undefined}
+            onAddToBack={addToBack ? () => addToBack(projectId, idx) : undefined}
+          />
+        ))}
+      </div>
     </div>
   );
 }
 
-function QueueDropdown({ onAddToFront, onAddToBack, isLast }: {
+function QueueDropdown({ onAddToFront, onAddToBack }: {
   onAddToFront?: () => void; onAddToBack?: () => void; isLast?: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ top: number; left: number; placeAbove: boolean } | null>(null);
+
+  useLayoutEffect(() => {
+    if (!open || !btnRef.current) return;
+    const rect = btnRef.current.getBoundingClientRect();
+    const menuH = 90;
+    const menuW = 170;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const placeAbove = spaceBelow < menuH + 12;
+    const top = placeAbove ? rect.top - menuH - 4 : rect.bottom + 4;
+    const left = Math.min(window.innerWidth - menuW - 8, Math.max(8, rect.right - menuW));
+    setPos({ top, left, placeAbove });
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      const t = e.target as Node;
+      if (btnRef.current?.contains(t)) return;
+      if (menuRef.current?.contains(t)) return;
+      setOpen(false);
     };
+    const scroll = () => setOpen(false);
     document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    window.addEventListener("scroll", scroll, true);
+    window.addEventListener("resize", scroll);
+    return () => {
+      document.removeEventListener("mousedown", handler);
+      window.removeEventListener("scroll", scroll, true);
+      window.removeEventListener("resize", scroll);
+    };
   }, [open]);
 
   return (
-    <div ref={ref} className="relative opacity-0 group-hover:opacity-100 transition-all">
+    <div className="relative opacity-0 group-hover:opacity-100 transition-all">
       <button
+        ref={btnRef}
         onClick={e => { e.stopPropagation(); setOpen(v => !v); }}
-        className={`p-1.5 rounded-md hover:bg-secondary transition-colors ${open ? "text-primary bg-secondary" : "text-muted-foreground hover:text-primary"}`}
+        className={`p-1.5 rounded-md hover:bg-secondary transition-colors ${open ? "text-primary bg-secondary opacity-100" : "text-muted-foreground hover:text-primary"}`}
         title="Add to queue"
       >
         <Plus size={13} />
       </button>
-      {open && (
+      {open && pos && typeof document !== "undefined" && createPortal(
         <div
-          className="animate-pop-in absolute right-0 z-[200] flex flex-col bg-popover border border-border rounded-lg shadow-2xl overflow-hidden min-w-[150px]"
-          style={{ [isLast ? "bottom" : "top"]: "100%", marginTop: isLast ? undefined : 4, marginBottom: isLast ? 4 : undefined }}
+          ref={menuRef}
+          className="animate-pop-in fixed z-[9999] flex flex-col bg-popover border border-border rounded-lg shadow-2xl overflow-hidden min-w-[160px]"
+          style={{ top: pos.top, left: pos.left }}
           onClick={e => e.stopPropagation()}
         >
           <button
@@ -2945,19 +2991,21 @@ function QueueDropdown({ onAddToFront, onAddToBack, isLast }: {
             <Plus size={12} className="text-muted-foreground" />
             Add to queue
           </button>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
 }
 
 function TrackRow({
-  track, index, isActive, isPlaying, isLast, isDragOver, onPlay, onDelete,
+  track, index, isActive, isPlaying, isLast, isDragOver, reorderUnlocked, onPlay, onDelete,
   isEditing, editingName, onStartEdit, onEditName, onSaveEdit, onCancelEdit,
   onDragStart, onDragOver, onDrop, onDragEnd, liked, onToggleLike,
   onAddToFront, onAddToBack,
 }: {
   track: Track; index: number; isActive: boolean; isPlaying: boolean; isLast: boolean; isDragOver: boolean;
+  reorderUnlocked?: boolean;
   onPlay: () => void; onDelete: () => void;
   isEditing: boolean; editingName: string;
   onStartEdit: () => void; onEditName: (v: string) => void;
@@ -2972,24 +3020,30 @@ function TrackRow({
 
   return (
     <div
-      draggable
+      draggable={!!reorderUnlocked}
       onDragStart={onDragStart}
       onDragOver={onDragOver}
       onDrop={onDrop}
       onDragEnd={onDragEnd}
-      className={`group flex items-center gap-3 px-3 py-3 transition-colors cursor-pointer select-none
+      className={`group flex items-center gap-3 px-3 py-3 transition-colors select-none
         ${isActive ? "bg-primary/8" : "hover:bg-card"}
         ${!isLast ? "border-b border-border" : ""}
         ${isDragOver ? "border-t-2 border-primary bg-primary/5" : ""}
+        ${reorderUnlocked ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"}
       `}
       onClick={!isEditing ? onPlay : undefined}
     >
       {/* Drag handle */}
       <div
-        className="shrink-0 p-1 text-muted-foreground/30 hover:text-muted-foreground cursor-grab active:cursor-grabbing transition-colors"
+        className={`shrink-0 p-1.5 -m-1 rounded-md transition-all ${
+          reorderUnlocked
+            ? "text-primary/70 hover:text-primary hover:bg-primary/10 cursor-grab active:cursor-grabbing"
+            : "text-muted-foreground/25 cursor-not-allowed"
+        }`}
         onClick={e => e.stopPropagation()}
+        title={reorderUnlocked ? "Drag to reorder" : "Unlock reordering to move tracks"}
       >
-        <GripVertical size={14} />
+        <GripVertical size={16} />
       </div>
 
       {/* Index / playing indicator */}
