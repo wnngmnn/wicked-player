@@ -2999,12 +2999,13 @@ function QueueDropdown({ onAddToFront, onAddToBack }: {
 }
 
 function TrackRow({
-  track, index, isActive, isPlaying, isLast, isDragOver, onPlay, onDelete,
+  track, index, isActive, isPlaying, isLast, isDragOver, reorderUnlocked, onPlay, onDelete,
   isEditing, editingName, onStartEdit, onEditName, onSaveEdit, onCancelEdit,
   onDragStart, onDragOver, onDrop, onDragEnd, liked, onToggleLike,
   onAddToFront, onAddToBack,
 }: {
   track: Track; index: number; isActive: boolean; isPlaying: boolean; isLast: boolean; isDragOver: boolean;
+  reorderUnlocked?: boolean;
   onPlay: () => void; onDelete: () => void;
   isEditing: boolean; editingName: string;
   onStartEdit: () => void; onEditName: (v: string) => void;
@@ -3019,24 +3020,30 @@ function TrackRow({
 
   return (
     <div
-      draggable
+      draggable={!!reorderUnlocked}
       onDragStart={onDragStart}
       onDragOver={onDragOver}
       onDrop={onDrop}
       onDragEnd={onDragEnd}
-      className={`group flex items-center gap-3 px-3 py-3 transition-colors cursor-pointer select-none
+      className={`group flex items-center gap-3 px-3 py-3 transition-colors select-none
         ${isActive ? "bg-primary/8" : "hover:bg-card"}
         ${!isLast ? "border-b border-border" : ""}
         ${isDragOver ? "border-t-2 border-primary bg-primary/5" : ""}
+        ${reorderUnlocked ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"}
       `}
       onClick={!isEditing ? onPlay : undefined}
     >
       {/* Drag handle */}
       <div
-        className="shrink-0 p-1 text-muted-foreground/30 hover:text-muted-foreground cursor-grab active:cursor-grabbing transition-colors"
+        className={`shrink-0 p-1.5 -m-1 rounded-md transition-all ${
+          reorderUnlocked
+            ? "text-primary/70 hover:text-primary hover:bg-primary/10 cursor-grab active:cursor-grabbing"
+            : "text-muted-foreground/25 cursor-not-allowed"
+        }`}
         onClick={e => e.stopPropagation()}
+        title={reorderUnlocked ? "Drag to reorder" : "Unlock reordering to move tracks"}
       >
-        <GripVertical size={14} />
+        <GripVertical size={16} />
       </div>
 
       {/* Index / playing indicator */}
