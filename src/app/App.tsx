@@ -67,6 +67,24 @@ const _drag = {
   fromFolderId: null as string | null,
 };
 
+// Apple Music-style double-triangle previous / next icons
+function IconPrev({ size = 24, className = "" }: { size?: number; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
+      <path d="M18 5L11 12L18 19V5Z" />
+      <path d="M10 5L3 12L10 19V5Z" />
+    </svg>
+  );
+}
+function IconNext({ size = 24, className = "" }: { size?: number; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
+      <path d="M6 5L13 12L6 19V5Z" />
+      <path d="M14 5L21 12L14 19V5Z" />
+    </svg>
+  );
+}
+
 // ── Custom Theme & Visualizer types ────────────────────────────────────────
 type FontOption = "system" | "inter" | "roboto" | "poppins" | "space-grotesk" | "dm-sans" | "nunito" | "jetbrains-mono";
 
@@ -6250,7 +6268,7 @@ function FullscreenModern(props: FullscreenSharedProps) {
             className="text-white/90 hover:text-white transition-all duration-200 hover:scale-110 active:scale-90 disabled:opacity-30"
             aria-label="Previous"
           >
-            <SkipBack size={30} fill="currentColor" strokeWidth={0} />
+            <IconPrev size={30} />
           </button>
           <button
             onClick={onTogglePlay}
@@ -6273,7 +6291,7 @@ function FullscreenModern(props: FullscreenSharedProps) {
             className="text-white/90 hover:text-white transition-all duration-200 hover:scale-110 active:scale-90"
             aria-label="Next"
           >
-            <SkipForward size={30} fill="currentColor" strokeWidth={0} />
+            <IconNext size={30} />
           </button>
           <div style={{ width: 40 }} />
         </div>
@@ -6825,7 +6843,7 @@ function FullscreenPlayer({
             className="text-white/90 hover:text-white transition-colors disabled:opacity-30 active:scale-90"
             aria-label="Previous"
           >
-            <SkipBack size={40} fill="currentColor" strokeWidth={0} />
+            <IconPrev size={40} />
           </button>
           <button
             onClick={onTogglePlay}
@@ -6841,7 +6859,7 @@ function FullscreenPlayer({
             className="text-white/90 hover:text-white transition-colors active:scale-90"
             aria-label="Next"
           >
-            <SkipForward size={40} fill="currentColor" strokeWidth={0} />
+            <IconNext size={40} />
           </button>
         </div>
 
@@ -7200,7 +7218,7 @@ function PlayerBarDefault({ project, track, player, onTogglePlay, onSeek, onVolu
           <div className="flex items-center gap-6">
             <button onClick={onPrev} disabled={player.queuePos===0&&!player.shuffle}
               className="text-foreground/85 hover:text-foreground transition-colors disabled:opacity-30 active:scale-95">
-              <SkipBack size={22} fill="currentColor" strokeWidth={0} />
+              <IconPrev size={22} />
             </button>
             <button
               onClick={onTogglePlay}
@@ -7213,7 +7231,7 @@ function PlayerBarDefault({ project, track, player, onTogglePlay, onSeek, onVolu
             </button>
             <button onClick={onNext}
               className="text-foreground/85 hover:text-foreground transition-colors active:scale-95">
-              <SkipForward size={22} fill="currentColor" strokeWidth={0} />
+            <IconNext size={22} />
             </button>
           </div>
           <div className="flex items-center gap-2.5 w-full">
@@ -7366,7 +7384,7 @@ function PlayerBarModern({ project, track, player, onTogglePlay, onSeek, onVolum
               className="text-white/85 hover:text-white transition-all duration-200 hover:scale-110 active:scale-90 disabled:opacity-30"
               aria-label="Previous"
             >
-              <SkipBack size={22} fill="currentColor" strokeWidth={0} />
+              <IconPrev size={22} />
             </button>
             <button
               onClick={onTogglePlay}
@@ -7389,7 +7407,7 @@ function PlayerBarModern({ project, track, player, onTogglePlay, onSeek, onVolum
               className="text-white/85 hover:text-white transition-all duration-200 hover:scale-110 active:scale-90"
               aria-label="Next"
             >
-              <SkipForward size={22} fill="currentColor" strokeWidth={0} />
+              <IconNext size={22} />
             </button>
             {onToggleNextUp && (
               <button
