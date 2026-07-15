@@ -67,6 +67,24 @@ const _drag = {
   fromFolderId: null as string | null,
 };
 
+// Apple Music-style double-triangle previous / next icons
+function IconPrev({ size = 24, className = "" }: { size?: number; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
+      <path d="M18 5L11 12L18 19V5Z" />
+      <path d="M10 5L3 12L10 19V5Z" />
+    </svg>
+  );
+}
+function IconNext({ size = 24, className = "" }: { size?: number; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
+      <path d="M6 5L13 12L6 19V5Z" />
+      <path d="M14 5L21 12L14 19V5Z" />
+    </svg>
+  );
+}
+
 // ── Custom Theme & Visualizer types ────────────────────────────────────────
 type FontOption = "system" | "inter" | "roboto" | "poppins" | "space-grotesk" | "dm-sans" | "nunito" | "jetbrains-mono";
 
