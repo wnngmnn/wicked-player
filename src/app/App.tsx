@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useLayoutEffect } from "react";
+import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
 import {
   Plus, Play, Pause, SkipBack, SkipForward, Volume2, VolumeX,
@@ -6,7 +7,7 @@ import {
   Music, Shuffle, ImagePlus, Link2, ListMusic,
   Library, User, Settings, PanelLeftClose, PanelLeftOpen, Home,
   Search, GripVertical, LayoutList, Maximize2, ChevronDown, ArrowUpDown,
-  Heart, Star, Globe, Lock, Calendar
+  Heart, Star, Globe, Lock, Unlock, Calendar
 } from "lucide-react";
 
 // ── Types ──────────────────────────────────────────────────────────────────
