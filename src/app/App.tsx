@@ -71,14 +71,14 @@ const _drag = {
 function IconPrev({ size = 24, className = "" }: { size?: number; className?: string }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
-      <path d="M20 7 Q20 5 18 6 L14 11 Q13 12 14 13 L18 18 Q20 19 20 17 Z M12 7 Q12 5 10 6 L6 11 Q5 12 6 13 L10 18 Q12 19 12 17 Z" />
+      <path d="M20 7 Q20 5 18 6 L14 11 Q13 12 14 13 L18 18 Q20 19 20 17 Z M13 7 Q13 5 11 6 L7 11 Q6 12 7 13 L11 18 Q13 19 13 17 Z" />
     </svg>
   );
 }
 function IconNext({ size = 24, className = "" }: { size?: number; className?: string }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
-      <path d="M4 7 Q4 5 6 6 L10 11 Q11 12 10 13 L6 18 Q4 19 4 17 Z M12 7 Q12 5 14 6 L18 11 Q19 12 18 13 L14 18 Q12 19 12 17 Z" />
+      <path d="M4 7 Q4 5 6 6 L10 11 Q11 12 10 13 L6 18 Q4 19 4 17 Z M11 7 Q11 5 13 6 L17 11 Q18 12 17 13 L13 18 Q11 19 11 17 Z" />
     </svg>
   );
 }
