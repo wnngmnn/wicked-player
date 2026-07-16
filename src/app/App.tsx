@@ -7215,8 +7215,8 @@ function PlayerBarDefault({ project, track, player, onTogglePlay, onSeek, onVolu
         <div className="flex flex-col items-center gap-1.5 w-[440px] max-w-full">
           <div className="flex items-center gap-6">
             <button onClick={onPrev} disabled={player.queuePos===0&&!player.shuffle}
-              className="w-8 h-8 flex items-center justify-center rounded-full text-foreground/85 hover:text-foreground hover:bg-foreground/10 transition-all duration-200 disabled:opacity-30 active:scale-95">
-              <IconPrev size={18} />
+              className="w-10 h-10 flex items-center justify-center rounded-full text-foreground/85 hover:text-foreground hover:bg-foreground/10 transition-all duration-200 disabled:opacity-30 active:scale-95">
+              <IconPrev size={24} />
             </button>
             <button
               onClick={onTogglePlay}
@@ -7228,8 +7228,8 @@ function PlayerBarDefault({ project, track, player, onTogglePlay, onSeek, onVolu
                 : <Play  size={28} fill="currentColor" strokeWidth={0} style={{ marginLeft: 2 }} />}
             </button>
             <button onClick={onNext}
-              className="w-8 h-8 flex items-center justify-center rounded-full text-foreground/85 hover:text-foreground hover:bg-foreground/10 transition-all duration-200 active:scale-95">
-              <IconNext size={18} />
+              className="w-10 h-10 flex items-center justify-center rounded-full text-foreground/85 hover:text-foreground hover:bg-foreground/10 transition-all duration-200 active:scale-95">
+              <IconNext size={24} />
             </button>
           </div>
           <div className="flex items-center gap-2.5 w-full">
