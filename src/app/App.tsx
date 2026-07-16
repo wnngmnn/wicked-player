@@ -7381,10 +7381,10 @@ function PlayerBarModern({ project, track, player, onTogglePlay, onSeek, onVolum
             <button
               onClick={onPrev}
               disabled={player.queuePos === 0 && !player.shuffle}
-              className="text-white/85 hover:text-white transition-all duration-200 hover:scale-110 active:scale-90 disabled:opacity-30"
+              className="w-8 h-8 flex items-center justify-center rounded-full text-white/85 hover:text-white hover:bg-white/10 transition-all duration-200 hover:scale-110 active:scale-90 disabled:opacity-30"
               aria-label="Previous"
             >
-              <IconPrev size={22} />
+              <IconPrev size={18} />
             </button>
             <button
               onClick={onTogglePlay}
@@ -7404,10 +7404,10 @@ function PlayerBarModern({ project, track, player, onTogglePlay, onSeek, onVolum
             </button>
             <button
               onClick={onNext}
-              className="text-white/85 hover:text-white transition-all duration-200 hover:scale-110 active:scale-90"
+              className="w-8 h-8 flex items-center justify-center rounded-full text-white/85 hover:text-white hover:bg-white/10 transition-all duration-200 hover:scale-110 active:scale-90"
               aria-label="Next"
             >
-              <IconNext size={22} />
+              <IconNext size={18} />
             </button>
             {onToggleNextUp && (
               <button
