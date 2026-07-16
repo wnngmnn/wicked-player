@@ -70,17 +70,15 @@ const _drag = {
 // Apple Music-style double-triangle previous / next icons
 function IconPrev({ size = 24, className = "" }: { size?: number; className?: string }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
-      <path d="M17 5L10 12L17 19" />
-      <path d="M9 5L2 12L9 19" />
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
+      <path d="M20 7 Q20 5 18 6 L14 11 Q13 12 14 13 L18 18 Q20 19 20 17 Z M12 7 Q12 5 10 6 L6 11 Q5 12 6 13 L10 18 Q12 19 12 17 Z" />
     </svg>
   );
 }
 function IconNext({ size = 24, className = "" }: { size?: number; className?: string }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
-      <path d="M7 5L14 12L7 19" />
-      <path d="M15 5L22 12L15 19" />
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
+      <path d="M4 7 Q4 5 6 6 L10 11 Q11 12 10 13 L6 18 Q4 19 4 17 Z M12 7 Q12 5 14 6 L18 11 Q19 12 18 13 L14 18 Q12 19 12 17 Z" />
     </svg>
   );
 }
