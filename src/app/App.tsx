@@ -71,14 +71,14 @@ const _drag = {
 function IconPrev({ size = 24, className = "" }: { size?: number; className?: string }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
-      <path d="M20 7 Q20 5 18 6 L14 11 Q13 12 14 13 L18 18 Q20 19 20 17 Z M12 7 Q12 5 10 6 L6 11 Q5 12 6 13 L10 18 Q12 19 12 17 Z" />
+      <path d="M20 7 Q20 5 18 6 L14 11 Q13 12 14 13 L18 18 Q20 19 20 17 Z M13 7 Q13 5 11 6 L7 11 Q6 12 7 13 L11 18 Q13 19 13 17 Z" />
     </svg>
   );
 }
 function IconNext({ size = 24, className = "" }: { size?: number; className?: string }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
-      <path d="M4 7 Q4 5 6 6 L10 11 Q11 12 10 13 L6 18 Q4 19 4 17 Z M12 7 Q12 5 14 6 L18 11 Q19 12 18 13 L14 18 Q12 19 12 17 Z" />
+      <path d="M4 7 Q4 5 6 6 L10 11 Q11 12 10 13 L6 18 Q4 19 4 17 Z M11 7 Q11 5 13 6 L17 11 Q18 12 17 13 L13 18 Q11 19 11 17 Z" />
     </svg>
   );
 }
@@ -6263,10 +6263,10 @@ function FullscreenModern(props: FullscreenSharedProps) {
           <button
             onClick={onPrev}
             disabled={player.queuePos === 0 && !player.shuffle}
-            className="w-11 h-11 flex items-center justify-center rounded-full text-white/90 hover:text-white hover:bg-white/10 transition-all duration-200 hover:scale-110 active:scale-90 disabled:opacity-30"
+            className="w-12 h-12 flex items-center justify-center rounded-full text-white/90 hover:text-white hover:bg-white/10 transition-all duration-200 hover:scale-110 active:scale-90 disabled:opacity-30"
             aria-label="Previous"
           >
-            <IconPrev size={26} />
+            <IconPrev size={32} />
           </button>
           <button
             onClick={onTogglePlay}
@@ -6286,10 +6286,10 @@ function FullscreenModern(props: FullscreenSharedProps) {
           </button>
           <button
             onClick={onNext}
-            className="w-11 h-11 flex items-center justify-center rounded-full text-white/90 hover:text-white hover:bg-white/10 transition-all duration-200 hover:scale-110 active:scale-90"
+            className="w-12 h-12 flex items-center justify-center rounded-full text-white/90 hover:text-white hover:bg-white/10 transition-all duration-200 hover:scale-110 active:scale-90"
             aria-label="Next"
           >
-            <IconNext size={26} />
+            <IconNext size={32} />
           </button>
           <div style={{ width: 40 }} />
         </div>
@@ -6838,10 +6838,10 @@ function FullscreenPlayer({
           <button
             onClick={onPrev}
             disabled={player.queuePos === 0 && !player.shuffle}
-            className="w-11 h-11 flex items-center justify-center rounded-full text-white/90 hover:text-white hover:bg-white/10 transition-all duration-200 disabled:opacity-30 active:scale-90"
+            className="w-14 h-14 flex items-center justify-center rounded-full text-white/90 hover:text-white hover:bg-white/10 transition-all duration-200 disabled:opacity-30 active:scale-90"
             aria-label="Previous"
           >
-            <IconPrev size={34} />
+            <IconPrev size={40} />
           </button>
           <button
             onClick={onTogglePlay}
@@ -6854,10 +6854,10 @@ function FullscreenPlayer({
           </button>
           <button
             onClick={onNext}
-            className="w-11 h-11 flex items-center justify-center rounded-full text-white/90 hover:text-white hover:bg-white/10 transition-all duration-200 active:scale-90"
+            className="w-14 h-14 flex items-center justify-center rounded-full text-white/90 hover:text-white hover:bg-white/10 transition-all duration-200 active:scale-90"
             aria-label="Next"
           >
-            <IconNext size={34} />
+            <IconNext size={40} />
           </button>
         </div>
 
@@ -7215,8 +7215,8 @@ function PlayerBarDefault({ project, track, player, onTogglePlay, onSeek, onVolu
         <div className="flex flex-col items-center gap-1.5 w-[440px] max-w-full">
           <div className="flex items-center gap-6">
             <button onClick={onPrev} disabled={player.queuePos===0&&!player.shuffle}
-              className="w-8 h-8 flex items-center justify-center rounded-full text-foreground/85 hover:text-foreground hover:bg-foreground/10 transition-all duration-200 disabled:opacity-30 active:scale-95">
-              <IconPrev size={18} />
+              className="w-10 h-10 flex items-center justify-center rounded-full text-foreground/85 hover:text-foreground hover:bg-foreground/10 transition-all duration-200 disabled:opacity-30 active:scale-95">
+              <IconPrev size={24} />
             </button>
             <button
               onClick={onTogglePlay}
@@ -7228,8 +7228,8 @@ function PlayerBarDefault({ project, track, player, onTogglePlay, onSeek, onVolu
                 : <Play  size={28} fill="currentColor" strokeWidth={0} style={{ marginLeft: 2 }} />}
             </button>
             <button onClick={onNext}
-              className="w-8 h-8 flex items-center justify-center rounded-full text-foreground/85 hover:text-foreground hover:bg-foreground/10 transition-all duration-200 active:scale-95">
-              <IconNext size={18} />
+              className="w-10 h-10 flex items-center justify-center rounded-full text-foreground/85 hover:text-foreground hover:bg-foreground/10 transition-all duration-200 active:scale-95">
+              <IconNext size={24} />
             </button>
           </div>
           <div className="flex items-center gap-2.5 w-full">
@@ -7379,10 +7379,10 @@ function PlayerBarModern({ project, track, player, onTogglePlay, onSeek, onVolum
             <button
               onClick={onPrev}
               disabled={player.queuePos === 0 && !player.shuffle}
-              className="w-8 h-8 flex items-center justify-center rounded-full text-white/85 hover:text-white hover:bg-white/10 transition-all duration-200 hover:scale-110 active:scale-90 disabled:opacity-30"
+              className="w-10 h-10 flex items-center justify-center rounded-full text-white/85 hover:text-white hover:bg-white/10 transition-all duration-200 hover:scale-110 active:scale-90 disabled:opacity-30"
               aria-label="Previous"
             >
-              <IconPrev size={18} />
+              <IconPrev size={24} />
             </button>
             <button
               onClick={onTogglePlay}
@@ -7402,10 +7402,10 @@ function PlayerBarModern({ project, track, player, onTogglePlay, onSeek, onVolum
             </button>
             <button
               onClick={onNext}
-              className="w-8 h-8 flex items-center justify-center rounded-full text-white/85 hover:text-white hover:bg-white/10 transition-all duration-200 hover:scale-110 active:scale-90"
+              className="w-10 h-10 flex items-center justify-center rounded-full text-white/85 hover:text-white hover:bg-white/10 transition-all duration-200 hover:scale-110 active:scale-90"
               aria-label="Next"
             >
-              <IconNext size={18} />
+              <IconNext size={24} />
             </button>
             {onToggleNextUp && (
               <button
