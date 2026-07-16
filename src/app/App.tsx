@@ -6840,10 +6840,10 @@ function FullscreenPlayer({
           <button
             onClick={onPrev}
             disabled={player.queuePos === 0 && !player.shuffle}
-            className="text-white/90 hover:text-white transition-colors disabled:opacity-30 active:scale-90"
+            className="w-11 h-11 flex items-center justify-center rounded-full text-white/90 hover:text-white hover:bg-white/10 transition-all duration-200 disabled:opacity-30 active:scale-90"
             aria-label="Previous"
           >
-            <IconPrev size={40} />
+            <IconPrev size={34} />
           </button>
           <button
             onClick={onTogglePlay}
@@ -6856,10 +6856,10 @@ function FullscreenPlayer({
           </button>
           <button
             onClick={onNext}
-            className="text-white/90 hover:text-white transition-colors active:scale-90"
+            className="w-11 h-11 flex items-center justify-center rounded-full text-white/90 hover:text-white hover:bg-white/10 transition-all duration-200 active:scale-90"
             aria-label="Next"
           >
-            <IconNext size={40} />
+            <IconNext size={34} />
           </button>
         </div>
 
