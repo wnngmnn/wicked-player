@@ -6263,10 +6263,10 @@ function FullscreenModern(props: FullscreenSharedProps) {
           <button
             onClick={onPrev}
             disabled={player.queuePos === 0 && !player.shuffle}
-            className="w-11 h-11 flex items-center justify-center rounded-full text-white/90 hover:text-white hover:bg-white/10 transition-all duration-200 hover:scale-110 active:scale-90 disabled:opacity-30"
+            className="w-12 h-12 flex items-center justify-center rounded-full text-white/90 hover:text-white hover:bg-white/10 transition-all duration-200 hover:scale-110 active:scale-90 disabled:opacity-30"
             aria-label="Previous"
           >
-            <IconPrev size={26} />
+            <IconPrev size={32} />
           </button>
           <button
             onClick={onTogglePlay}
@@ -6286,10 +6286,10 @@ function FullscreenModern(props: FullscreenSharedProps) {
           </button>
           <button
             onClick={onNext}
-            className="w-11 h-11 flex items-center justify-center rounded-full text-white/90 hover:text-white hover:bg-white/10 transition-all duration-200 hover:scale-110 active:scale-90"
+            className="w-12 h-12 flex items-center justify-center rounded-full text-white/90 hover:text-white hover:bg-white/10 transition-all duration-200 hover:scale-110 active:scale-90"
             aria-label="Next"
           >
-            <IconNext size={26} />
+            <IconNext size={32} />
           </button>
           <div style={{ width: 40 }} />
         </div>
