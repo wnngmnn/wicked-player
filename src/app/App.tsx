@@ -252,25 +252,100 @@ async function resizeCover(file: File): Promise<string> {
       const w = img.width * r, h = img.height * r;
       ctx.drawImage(img, (sz - w) / 2, (sz - h) / 2, w, h);
       URL.revokeObjectURL(url);
-      resolve(canvas.toDataURL("image/jpeg", 0.93));
+const MAX_COVER_INPUT_BYTES = 40 * 1024 * 1024; // 40MB hard cap
+const MAX_GIF_STORED_BYTES = 6 * 1024 * 1024; // GIFs are stored as-is; keep small
+
+async function decodeImage(file: File): Promise<{ width: number; height: number; draw: (ctx: CanvasRenderingContext2D, dx: number, dy: number, dw: number, dh: number) => void; close: () => void }> {
+  // Prefer createImageBitmap (streams, handles huge files, off main thread)
+  if (typeof createImageBitmap === "function") {
+    try {
+      const bitmap = await createImageBitmap(file);
+      return {
+        width: bitmap.width,
+        height: bitmap.height,
+        draw: (ctx, dx, dy, dw, dh) => ctx.drawImage(bitmap, dx, dy, dw, dh),
+        close: () => { try { bitmap.close(); } catch {} },
+      };
+    } catch (err) {
+      console.warn("createImageBitmap failed, falling back to <img>", err);
+    }
+  }
+  // Fallback: <img> + object URL
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = () => reject(new Error("Image failed to decode (unsupported format?)"));
+      el.src = url;
+    });
+    return {
+      width: img.naturalWidth || img.width,
+      height: img.naturalHeight || img.height,
+      draw: (ctx, dx, dy, dw, dh) => ctx.drawImage(img, dx, dy, dw, dh),
+      close: () => URL.revokeObjectURL(url),
     };
-    img.onerror = () => { URL.revokeObjectURL(url); resolve(""); };
-    img.src = url;
-  });
+  } catch (err) {
+    URL.revokeObjectURL(url);
+    throw err;
+  }
 }
 
-// GIFs must bypass canvas (canvas flattens them to a single frame).
-// All other images go through resizeCover for consistent square cropping.
-async function processCover(file: File): Promise<string> {
-  if (file.type === "image/gif") {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = () => reject(new Error("Failed to read GIF"));
-      reader.readAsDataURL(file);
-    });
+async function resizeCover(file: File): Promise<string> {
+  const decoded = await decodeImage(file);
+  try {
+    if (!decoded.width || !decoded.height) throw new Error("Empty image dimensions");
+    // Target square size: scale down when source is small; cap at 1400.
+    const target = Math.min(1400, Math.max(decoded.width, decoded.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = target; canvas.height = target;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Canvas 2D unavailable");
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+    const r = Math.max(target / decoded.width, target / decoded.height);
+    const w = decoded.width * r, h = decoded.height * r;
+    ctx.drawImage(document.createElement("canvas"), 0, 0); // no-op keeps TS happy
+    decoded.draw(ctx, (target - w) / 2, (target - h) / 2, w, h);
+    // Progressive quality: shrink until under ~600KB to keep localStorage happy
+    let quality = 0.92;
+    let dataUrl = canvas.toDataURL("image/jpeg", quality);
+    while (dataUrl.length > 800_000 && quality > 0.5) {
+      quality -= 0.1;
+      dataUrl = canvas.toDataURL("image/jpeg", quality);
+    }
+    if (!dataUrl || dataUrl === "data:,") throw new Error("Canvas export failed");
+    return dataUrl;
+  } finally {
+    decoded.close();
   }
-  return resizeCover(file);
+}
+
+async function processCover(file: File): Promise<string> {
+  if (file.size > MAX_COVER_INPUT_BYTES) {
+    window.alert(`That image is too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Please pick one under 40 MB.`);
+    return "";
+  }
+  try {
+    if (file.type === "image/gif") {
+      if (file.size > MAX_GIF_STORED_BYTES) {
+        window.alert(`This GIF is ${(file.size / 1024 / 1024).toFixed(1)} MB — too large to store. Please use one under 6 MB, or convert to a static image.`);
+        return "";
+      }
+      return await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(new Error("Failed to read GIF"));
+        reader.readAsDataURL(file);
+      });
+    }
+    return await resizeCover(file);
+  } catch (err) {
+    console.error("Cover upload failed", err);
+    const msg = (err as Error)?.message || "Unknown error";
+    window.alert(`Couldn't use that image: ${msg}. Try a different file (JPG or PNG under 40 MB).`);
+    return "";
+  }
 }
 
 function getAudioDuration(file: File): Promise<number> {
@@ -282,6 +357,7 @@ function getAudioDuration(file: File): Promise<number> {
     a.src = url;
   });
 }
+
 
 async function sampleCoverColor(dataUrl: string): Promise<string> {
   return new Promise(resolve => {
