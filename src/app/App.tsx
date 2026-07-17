@@ -237,21 +237,6 @@ function parseRoute() {
   return { page: "home" as const, id: undefined };
 }
 
-async function resizeCover(file: File): Promise<string> {
-  return new Promise(resolve => {
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-    img.onload = () => {
-      const sz = 1400; // High-res for crisp fullscreen display
-      const canvas = document.createElement("canvas");
-      canvas.width = sz; canvas.height = sz;
-      const ctx = canvas.getContext("2d")!;
-      ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = "high";
-      const r = Math.max(sz / img.width, sz / img.height);
-      const w = img.width * r, h = img.height * r;
-      ctx.drawImage(img, (sz - w) / 2, (sz - h) / 2, w, h);
-      URL.revokeObjectURL(url);
 const MAX_COVER_INPUT_BYTES = 40 * 1024 * 1024; // 40MB hard cap
 const MAX_GIF_STORED_BYTES = 6 * 1024 * 1024; // GIFs are stored as-is; keep small
 
