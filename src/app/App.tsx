@@ -196,8 +196,22 @@ function loadProjects(): Project[] {
   try { return JSON.parse(localStorage.getItem("melodia_projects") || "[]"); }
   catch { return []; }
 }
+function safeSetItem(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value);
+  } catch (err) {
+    console.error("localStorage write failed", err);
+    if (typeof window !== "undefined") {
+      const msg = (err as { name?: string })?.name === "QuotaExceededError"
+        ? "Storage is full. Try using a smaller cover image or removing unused projects."
+        : "Failed to save changes to browser storage.";
+      // Fire once, non-blocking
+      queueMicrotask(() => { try { window.alert(msg); } catch {} });
+    }
+  }
+}
 function saveProjects(p: Project[]) {
-  localStorage.setItem("melodia_projects", JSON.stringify(p));
+  safeSetItem("melodia_projects", JSON.stringify(p));
 }
 
 function loadPlaylists(): Playlist[] {
@@ -205,15 +219,16 @@ function loadPlaylists(): Playlist[] {
   catch { return []; }
 }
 function savePlaylists(p: Playlist[]) {
-  localStorage.setItem("melodia_playlists", JSON.stringify(p));
+  safeSetItem("melodia_playlists", JSON.stringify(p));
 }
 
 function loadLikedSongs(): LikedSong[] { try { return JSON.parse(localStorage.getItem("melodia_liked") || "[]"); } catch { return []; } }
-function saveLikedSongs(s: LikedSong[]) { localStorage.setItem("melodia_liked", JSON.stringify(s)); }
+function saveLikedSongs(s: LikedSong[]) { safeSetItem("melodia_liked", JSON.stringify(s)); }
 function loadFavorites(): FavoriteItem[] { try { return JSON.parse(localStorage.getItem("melodia_favorites") || "[]"); } catch { return []; } }
-function saveFavorites(f: FavoriteItem[]) { localStorage.setItem("melodia_favorites", JSON.stringify(f)); }
+function saveFavorites(f: FavoriteItem[]) { safeSetItem("melodia_favorites", JSON.stringify(f)); }
 function loadFolders(): Folder[] { try { return JSON.parse(localStorage.getItem("melodia_folders") || "[]"); } catch { return []; } }
-function saveFolders(f: Folder[]) { localStorage.setItem("melodia_folders", JSON.stringify(f)); }
+function saveFolders(f: Folder[]) { safeSetItem("melodia_folders", JSON.stringify(f)); }
+
 
 function parseRoute() {
   const h = window.location.hash.slice(1) || "/";
@@ -222,40 +237,100 @@ function parseRoute() {
   return { page: "home" as const, id: undefined };
 }
 
-async function resizeCover(file: File): Promise<string> {
-  return new Promise(resolve => {
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-    img.onload = () => {
-      const sz = 1400; // High-res for crisp fullscreen display
-      const canvas = document.createElement("canvas");
-      canvas.width = sz; canvas.height = sz;
-      const ctx = canvas.getContext("2d")!;
-      ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = "high";
-      const r = Math.max(sz / img.width, sz / img.height);
-      const w = img.width * r, h = img.height * r;
-      ctx.drawImage(img, (sz - w) / 2, (sz - h) / 2, w, h);
-      URL.revokeObjectURL(url);
-      resolve(canvas.toDataURL("image/jpeg", 0.93));
+const MAX_COVER_INPUT_BYTES = 40 * 1024 * 1024; // 40MB hard cap
+const MAX_GIF_STORED_BYTES = 6 * 1024 * 1024; // GIFs are stored as-is; keep small
+
+async function decodeImage(file: File): Promise<{ width: number; height: number; draw: (ctx: CanvasRenderingContext2D, dx: number, dy: number, dw: number, dh: number) => void; close: () => void }> {
+  // Prefer createImageBitmap (streams, handles huge files, off main thread)
+  if (typeof createImageBitmap === "function") {
+    try {
+      const bitmap = await createImageBitmap(file);
+      return {
+        width: bitmap.width,
+        height: bitmap.height,
+        draw: (ctx, dx, dy, dw, dh) => ctx.drawImage(bitmap, dx, dy, dw, dh),
+        close: () => { try { bitmap.close(); } catch {} },
+      };
+    } catch (err) {
+      console.warn("createImageBitmap failed, falling back to <img>", err);
+    }
+  }
+  // Fallback: <img> + object URL
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = () => reject(new Error("Image failed to decode (unsupported format?)"));
+      el.src = url;
+    });
+    return {
+      width: img.naturalWidth || img.width,
+      height: img.naturalHeight || img.height,
+      draw: (ctx, dx, dy, dw, dh) => ctx.drawImage(img, dx, dy, dw, dh),
+      close: () => URL.revokeObjectURL(url),
     };
-    img.onerror = () => { URL.revokeObjectURL(url); resolve(""); };
-    img.src = url;
-  });
+  } catch (err) {
+    URL.revokeObjectURL(url);
+    throw err;
+  }
 }
 
-// GIFs must bypass canvas (canvas flattens them to a single frame).
-// All other images go through resizeCover for consistent square cropping.
-async function processCover(file: File): Promise<string> {
-  if (file.type === "image/gif") {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = () => reject(new Error("Failed to read GIF"));
-      reader.readAsDataURL(file);
-    });
+async function resizeCover(file: File): Promise<string> {
+  const decoded = await decodeImage(file);
+  try {
+    if (!decoded.width || !decoded.height) throw new Error("Empty image dimensions");
+    // Target square size: scale down when source is small; cap at 1400.
+    const target = Math.min(1400, Math.max(decoded.width, decoded.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = target; canvas.height = target;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Canvas 2D unavailable");
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+    const r = Math.max(target / decoded.width, target / decoded.height);
+    const w = decoded.width * r, h = decoded.height * r;
+    ctx.fillStyle = "#000"; ctx.fillRect(0, 0, target, target);
+    decoded.draw(ctx, (target - w) / 2, (target - h) / 2, w, h);
+    // Progressive quality: shrink until under ~600KB to keep localStorage happy
+    let quality = 0.92;
+    let dataUrl = canvas.toDataURL("image/jpeg", quality);
+    while (dataUrl.length > 800_000 && quality > 0.5) {
+      quality -= 0.1;
+      dataUrl = canvas.toDataURL("image/jpeg", quality);
+    }
+    if (!dataUrl || dataUrl === "data:,") throw new Error("Canvas export failed");
+    return dataUrl;
+  } finally {
+    decoded.close();
   }
-  return resizeCover(file);
+}
+
+async function processCover(file: File): Promise<string> {
+  if (file.size > MAX_COVER_INPUT_BYTES) {
+    window.alert(`That image is too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Please pick one under 40 MB.`);
+    return "";
+  }
+  try {
+    if (file.type === "image/gif") {
+      if (file.size > MAX_GIF_STORED_BYTES) {
+        window.alert(`This GIF is ${(file.size / 1024 / 1024).toFixed(1)} MB — too large to store. Please use one under 6 MB, or convert to a static image.`);
+        return "";
+      }
+      return await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(new Error("Failed to read GIF"));
+        reader.readAsDataURL(file);
+      });
+    }
+    return await resizeCover(file);
+  } catch (err) {
+    console.error("Cover upload failed", err);
+    const msg = (err as Error)?.message || "Unknown error";
+    window.alert(`Couldn't use that image: ${msg}. Try a different file (JPG or PNG under 40 MB).`);
+    return "";
+  }
 }
 
 function getAudioDuration(file: File): Promise<number> {
@@ -267,6 +342,7 @@ function getAudioDuration(file: File): Promise<number> {
     a.src = url;
   });
 }
+
 
 async function sampleCoverColor(dataUrl: string): Promise<string> {
   return new Promise(resolve => {
@@ -2739,10 +2815,12 @@ function ProjectView({ projects, setProjects, player, playTrack, nav, showToast,
                 <ImagePlus size={22} className="text-white" />
                 <span className="text-white text-xs font-semibold">Change Cover</span>
                 <input type="file" accept="image/*,image/gif" className="hidden" onChange={async e => {
-                  if (e.target.files?.[0]) {
-                    const dataUrl = await processCover(e.target.files[0]);
-                    if (dataUrl) update({ coverDataUrl: dataUrl });
-                  }
+                  const input = e.target;
+                  const file = input.files?.[0];
+                  input.value = "";
+                  if (!file) return;
+                  const dataUrl = await processCover(file);
+                  if (dataUrl) update({ coverDataUrl: dataUrl });
                 }} />
               </label>
             </div>
@@ -3703,10 +3781,12 @@ function PlaylistDetailView({
               <span className="text-white text-xs font-semibold">Change Cover</span>
             </div>
             <input type="file" accept="image/*,image/gif" className="hidden" onChange={async e => {
-              if (e.target.files?.[0]) {
-                const url = await processCover(e.target.files[0]);
-                if (url) updatePlaylist({ coverDataUrl: url });
-              }
+              const input = e.target;
+              const file = input.files?.[0];
+              input.value = "";
+              if (!file) return;
+              const url = await processCover(file);
+              if (url) updatePlaylist({ coverDataUrl: url });
             }} />
           </label>
 
@@ -4064,7 +4144,12 @@ function CreatePlaylistModal({ onClose, onCreate }: { onClose: () => void; onCre
               </>
             )}
             <input type="file" accept="image/*,image/gif" className="hidden" onChange={async e => {
-              if (e.target.files?.[0]) { const url = await processCover(e.target.files[0]); if (url) setCoverDataUrl(url); }
+              const input = e.target;
+              const file = input.files?.[0];
+              input.value = "";
+              if (!file) return;
+              const url = await processCover(file);
+              if (url) setCoverDataUrl(url);
             }} />
           </label>
           <div className="flex-1 flex flex-col justify-center">
@@ -7724,7 +7809,12 @@ function CoverPicker({ value, onChange }: { value: string | null; onChange: (url
         </>
       )}
       <input type="file" accept="image/*,image/gif" className="hidden" onChange={async e => {
-        if (e.target.files?.[0]) { const url = await processCover(e.target.files[0]); if (url) onChange(url); }
+        const input = e.target;
+        const file = input.files?.[0];
+        input.value = "";
+        if (!file) return;
+        const url = await processCover(file);
+        if (url) onChange(url);
       }} />
     </label>
   );
