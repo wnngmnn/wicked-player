@@ -4144,7 +4144,12 @@ function CreatePlaylistModal({ onClose, onCreate }: { onClose: () => void; onCre
               </>
             )}
             <input type="file" accept="image/*,image/gif" className="hidden" onChange={async e => {
-              if (e.target.files?.[0]) { const url = await processCover(e.target.files[0]); if (url) setCoverDataUrl(url); }
+              const input = e.target;
+              const file = input.files?.[0];
+              input.value = "";
+              if (!file) return;
+              const url = await processCover(file);
+              if (url) setCoverDataUrl(url);
             }} />
           </label>
           <div className="flex-1 flex flex-col justify-center">
