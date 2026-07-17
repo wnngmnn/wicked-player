@@ -2815,10 +2815,12 @@ function ProjectView({ projects, setProjects, player, playTrack, nav, showToast,
                 <ImagePlus size={22} className="text-white" />
                 <span className="text-white text-xs font-semibold">Change Cover</span>
                 <input type="file" accept="image/*,image/gif" className="hidden" onChange={async e => {
-                  if (e.target.files?.[0]) {
-                    const dataUrl = await processCover(e.target.files[0]);
-                    if (dataUrl) update({ coverDataUrl: dataUrl });
-                  }
+                  const input = e.target;
+                  const file = input.files?.[0];
+                  input.value = "";
+                  if (!file) return;
+                  const dataUrl = await processCover(file);
+                  if (dataUrl) update({ coverDataUrl: dataUrl });
                 }} />
               </label>
             </div>
