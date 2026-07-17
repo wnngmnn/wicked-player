@@ -7809,7 +7809,12 @@ function CoverPicker({ value, onChange }: { value: string | null; onChange: (url
         </>
       )}
       <input type="file" accept="image/*,image/gif" className="hidden" onChange={async e => {
-        if (e.target.files?.[0]) { const url = await processCover(e.target.files[0]); if (url) onChange(url); }
+        const input = e.target;
+        const file = input.files?.[0];
+        input.value = "";
+        if (!file) return;
+        const url = await processCover(file);
+        if (url) onChange(url);
       }} />
     </label>
   );
