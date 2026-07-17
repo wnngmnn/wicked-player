@@ -3781,10 +3781,12 @@ function PlaylistDetailView({
               <span className="text-white text-xs font-semibold">Change Cover</span>
             </div>
             <input type="file" accept="image/*,image/gif" className="hidden" onChange={async e => {
-              if (e.target.files?.[0]) {
-                const url = await processCover(e.target.files[0]);
-                if (url) updatePlaylist({ coverDataUrl: url });
-              }
+              const input = e.target;
+              const file = input.files?.[0];
+              input.value = "";
+              if (!file) return;
+              const url = await processCover(file);
+              if (url) updatePlaylist({ coverDataUrl: url });
             }} />
           </label>
 
