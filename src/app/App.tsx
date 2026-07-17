@@ -196,8 +196,22 @@ function loadProjects(): Project[] {
   try { return JSON.parse(localStorage.getItem("melodia_projects") || "[]"); }
   catch { return []; }
 }
+function safeSetItem(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value);
+  } catch (err) {
+    console.error("localStorage write failed", err);
+    if (typeof window !== "undefined") {
+      const msg = (err as { name?: string })?.name === "QuotaExceededError"
+        ? "Storage is full. Try using a smaller cover image or removing unused projects."
+        : "Failed to save changes to browser storage.";
+      // Fire once, non-blocking
+      queueMicrotask(() => { try { window.alert(msg); } catch {} });
+    }
+  }
+}
 function saveProjects(p: Project[]) {
-  localStorage.setItem("melodia_projects", JSON.stringify(p));
+  safeSetItem("melodia_projects", JSON.stringify(p));
 }
 
 function loadPlaylists(): Playlist[] {
@@ -205,15 +219,16 @@ function loadPlaylists(): Playlist[] {
   catch { return []; }
 }
 function savePlaylists(p: Playlist[]) {
-  localStorage.setItem("melodia_playlists", JSON.stringify(p));
+  safeSetItem("melodia_playlists", JSON.stringify(p));
 }
 
 function loadLikedSongs(): LikedSong[] { try { return JSON.parse(localStorage.getItem("melodia_liked") || "[]"); } catch { return []; } }
-function saveLikedSongs(s: LikedSong[]) { localStorage.setItem("melodia_liked", JSON.stringify(s)); }
+function saveLikedSongs(s: LikedSong[]) { safeSetItem("melodia_liked", JSON.stringify(s)); }
 function loadFavorites(): FavoriteItem[] { try { return JSON.parse(localStorage.getItem("melodia_favorites") || "[]"); } catch { return []; } }
-function saveFavorites(f: FavoriteItem[]) { localStorage.setItem("melodia_favorites", JSON.stringify(f)); }
+function saveFavorites(f: FavoriteItem[]) { safeSetItem("melodia_favorites", JSON.stringify(f)); }
 function loadFolders(): Folder[] { try { return JSON.parse(localStorage.getItem("melodia_folders") || "[]"); } catch { return []; } }
-function saveFolders(f: Folder[]) { localStorage.setItem("melodia_folders", JSON.stringify(f)); }
+function saveFolders(f: Folder[]) { safeSetItem("melodia_folders", JSON.stringify(f)); }
+
 
 function parseRoute() {
   const h = window.location.hash.slice(1) || "/";
