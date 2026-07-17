@@ -290,7 +290,7 @@ async function resizeCover(file: File): Promise<string> {
     ctx.imageSmoothingQuality = "high";
     const r = Math.max(target / decoded.width, target / decoded.height);
     const w = decoded.width * r, h = decoded.height * r;
-    ctx.drawImage(document.createElement("canvas"), 0, 0); // no-op keeps TS happy
+    ctx.fillStyle = "#000"; ctx.fillRect(0, 0, target, target);
     decoded.draw(ctx, (target - w) / 2, (target - h) / 2, w, h);
     // Progressive quality: shrink until under ~600KB to keep localStorage happy
     let quality = 0.92;
