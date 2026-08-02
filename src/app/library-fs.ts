@@ -12,9 +12,6 @@ type PermissionState = "granted" | "denied" | "prompt";
 interface DirHandle extends FileSystemDirectoryHandle {
   queryPermission?: (opts: { mode: "read" | "readwrite" }) => Promise<PermissionState>;
   requestPermission?: (opts: { mode: "read" | "readwrite" }) => Promise<PermissionState>;
-  getFileHandle: (name: string, opts?: { create?: boolean }) => Promise<FileSystemFileHandle>;
-  removeEntry: (name: string, opts?: { recursive?: boolean }) => Promise<void>;
-  values: () => AsyncIterableIterator<FileSystemHandle>;
 }
 
 let _db: IDBDatabase | null = null;
@@ -134,11 +131,7 @@ export async function writeAudioFile(
   const base = sanitize(originalName.replace(/\.[^.]+$/, "")) || "track";
   const fileName = `${base}__${id}${ext}`;
   const handle = await dir.getFileHandle(fileName, { create: true });
-  const writable = await (handle as unknown as {
-    createWritable: () => Promise<{ write: (d: Blob) => Promise<void>; close: () => Promise<void> }>;
-  }).createWritable?.() ?? await (handle as unknown as {
-    createWritable: () => Promise<{ write: (d: Blob) => Promise<void>; close: () => Promise<void> }>;
-  }).createWritable();
+  const writable = await handle.createWritable();
   await writable.write(file as Blob);
   await writable.close();
   return fileName;
