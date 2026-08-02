@@ -9,6 +9,11 @@ import {
   Search, GripVertical, LayoutList, Maximize2, ChevronDown, ArrowUpDown,
   Heart, Star, Globe, Lock, Unlock, Calendar
 } from "lucide-react";
+import {
+  isFsSupported, pickLibraryFolder, getSavedLibraryName, getLibraryDir,
+  libraryPermissionState, forgetLibraryFolder, writeAudioFile, readAudioFile,
+  deleteAudioFile,
+} from "./library-fs";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -16,6 +21,8 @@ interface Track {
   id: string;
   name: string;
   audioKey: string;
+  /** File name inside the user's local music folder (File System Access API). */
+  filePath?: string;
   duration: number;
 }
 
@@ -169,6 +176,38 @@ async function dbDel(key: string): Promise<void> {
     tx.oncomplete = () => res();
     tx.onerror = () => rej(tx.error);
   });
+}
+
+// ── Track file storage (local folder first, browser storage as fallback) ───
+
+/** Saves an audio file to the local library folder when available. */
+async function saveTrackFile(id: string, file: File): Promise<{ audioKey: string; filePath?: string }> {
+  const audioKey = `audio_${id}`;
+  const dir = await getLibraryDir(false);
+  if (dir) {
+    try {
+      const filePath = await writeAudioFile(dir, id, file, file.name);
+      return { audioKey, filePath };
+    } catch (err) {
+      console.error("Local folder write failed, falling back to browser storage", err);
+    }
+  }
+  await dbPut(audioKey, file);
+  return { audioKey };
+}
+
+/** Resolves a track's audio, from disk first then browser storage. */
+async function loadTrackFile(track: { audioKey: string; filePath?: string }): Promise<Blob | null> {
+  if (track.filePath) {
+    const file = await readAudioFile(track.filePath, true);
+    if (file) return file;
+  }
+  try { return await dbGet(track.audioKey); } catch { return null; }
+}
+
+async function deleteTrackFile(track: { audioKey: string; filePath?: string }): Promise<void> {
+  if (track.filePath) await deleteAudioFile(track.filePath);
+  try { await dbDel(track.audioKey); } catch { /* ignore */ }
 }
 
 // ── Utils ──────────────────────────────────────────────────────────────────
@@ -1534,8 +1573,13 @@ export default function App() {
     audio.pause();
     if (blobRef.current) { URL.revokeObjectURL(blobRef.current); blobRef.current = null; }
 
-    const blob = await dbGet(track.audioKey);
-    if (!blob) { showToast("Audio file not found"); return; }
+    const blob = await loadTrackFile(track);
+    if (!blob) {
+      showToast(isFsSupported()
+        ? "Audio file not found — reconnect your music folder in Settings"
+        : "Audio file not found");
+      return;
+    }
 
     blobRef.current = URL.createObjectURL(blob);
     audio.src = blobRef.current;
@@ -2703,11 +2747,10 @@ function ProjectView({ projects, setProjects, player, playTrack, nav, showToast,
     for (const file of Array.from(files)) {
       if (!file.type.includes("audio") && !file.name.match(/\.(mp3|wav|ogg|flac|aac|m4a)$/i)) continue;
       const id = genId();
-      const audioKey = `audio_${id}`;
-      await dbPut(audioKey, file);
+      const { audioKey, filePath } = await saveTrackFile(id, file);
       const duration = await getAudioDuration(file);
       const name = file.name.replace(/\.[^.]+$/, "");
-      newTracks.push({ id, name, audioKey, duration });
+      newTracks.push({ id, name, audioKey, filePath, duration });
     }
     update({ tracks: [...project.tracks, ...newTracks] });
     setUploading(false);
@@ -2715,7 +2758,7 @@ function ProjectView({ projects, setProjects, player, playTrack, nav, showToast,
   };
 
   const handleDeleteTrack = async (track: Track) => {
-    await dbDel(track.audioKey);
+    await deleteTrackFile(track);
     update({ tracks: project.tracks.filter(t => t.id !== track.id) });
     showToast("Track removed");
   };
@@ -2732,7 +2775,7 @@ function ProjectView({ projects, setProjects, player, playTrack, nav, showToast,
 
   const handleDeleteProject = async () => {
     if (!window.confirm(`Delete "${project.name}"? This cannot be undone.`)) return;
-    for (const t of project.tracks) await dbDel(t.audioKey);
+    for (const t of project.tracks) await deleteTrackFile(t);
     setProjects(prev => prev.filter(p => p.id !== projectId));
     nav("/");
   };
@@ -5963,6 +6006,11 @@ function SettingsView({ projects, setProjects, showToast, player, setPlayer, aud
       </section>
       )}
 
+      {/* ── Music folder ── */}
+      {settingsTab === "system" && (
+        <MusicFolderSection projects={projects} setProjects={setProjects} showToast={showToast} />
+      )}
+
       {/* ── Storage ── */}
       {settingsTab === "system" && (
       <section className="mb-8">
@@ -5978,7 +6026,7 @@ function SettingsView({ projects, setProjects, showToast, player, setPlayer, aud
           </div>
           <div className="flex items-center justify-between px-5 py-4">
             <p className="text-sm font-semibold">Storage Location</p>
-            <p className="text-sm text-muted-foreground">This device</p>
+            <p className="text-sm text-muted-foreground">Your computer</p>
           </div>
         </div>
       </section>
@@ -5995,7 +6043,7 @@ function SettingsView({ projects, setProjects, showToast, player, setPlayer, aud
           </div>
           <div className="px-5 py-4">
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Music is stored locally in your browser using IndexedDB. Share links work on the same device and browser. No data is sent to any server.
+              Music files live in the folder you pick on your own computer, like iTunes. If no folder is set, they fall back to browser storage. No data is sent to any server.
             </p>
           </div>
         </div>
@@ -7958,6 +8006,165 @@ function AlbumForm({ onClose, onCreate }: { onClose: () => void; onCreate: (p: P
   );
 }
 
+function MusicFolderSection({ projects, setProjects, showToast }: {
+  projects: Project[];
+  setProjects: React.Dispatch<React.SetStateAction<Project[]>>;
+  showToast: (m: string) => void;
+}) {
+  const supported = isFsSupported();
+  const [folder, setFolder] = useState<string | null>(null);
+  const [perm, setPerm] = useState<"none" | "granted" | "prompt">("none");
+  const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState<string | null>(null);
+
+  const refresh = useCallback(async () => {
+    setFolder(await getSavedLibraryName());
+    setPerm(await libraryPermissionState());
+  }, []);
+
+  useEffect(() => { void refresh(); }, [refresh]);
+
+  const pendingMigration = projects.reduce(
+    (n, p) => n + p.tracks.filter(t => !t.filePath).length, 0);
+
+  const choose = async () => {
+    const name = await pickLibraryFolder();
+    if (name) showToast(`Music folder set to "${name}"`);
+    await refresh();
+  };
+
+  const reconnect = async () => {
+    const dir = await getLibraryDir(true);
+    if (dir) showToast("Music folder reconnected");
+    await refresh();
+  };
+
+  const migrate = async () => {
+    const dir = await getLibraryDir(true);
+    if (!dir) { showToast("Choose a music folder first"); return; }
+    setBusy(true);
+    let done = 0;
+    const total = pendingMigration;
+    const updated: Project[] = [];
+    for (const proj of projects) {
+      const tracks: Track[] = [];
+      for (const t of proj.tracks) {
+        if (t.filePath) { tracks.push(t); continue; }
+        try {
+          const blob = await dbGet(t.audioKey);
+          if (!blob) { tracks.push(t); continue; }
+          const file = new File([blob], `${t.name}.mp3`, { type: blob.type || "audio/mpeg" });
+          const filePath = await writeAudioFile(dir, t.id, file, file.name);
+          await dbDel(t.audioKey);
+          tracks.push({ ...t, filePath });
+        } catch (err) {
+          console.error("Migration failed for track", t.name, err);
+          tracks.push(t);
+        }
+        done++;
+        setProgress(`Moving ${done}/${total}…`);
+      }
+      updated.push({ ...proj, tracks });
+    }
+    setProjects(updated);
+    setBusy(false);
+    setProgress(null);
+    showToast("Library moved to your music folder");
+  };
+
+  const forget = async () => {
+    await forgetLibraryFolder();
+    await refresh();
+    showToast("Music folder disconnected");
+  };
+
+  return (
+    <section className="mb-8">
+      <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3">Music Folder</p>
+      <div className="bg-card border border-border rounded-lg overflow-hidden divide-y divide-border">
+        {!supported && (
+          <div className="px-5 py-4">
+            <p className="text-sm font-semibold mb-1">Not available in this browser</p>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Local folder libraries need a Chromium browser (Chrome, Edge, Opera) on desktop.
+              Music will keep using browser storage here.
+            </p>
+          </div>
+        )}
+        {supported && (
+          <>
+            <div className="flex items-center justify-between gap-4 px-5 py-4">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold">Library location</p>
+                <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                  {folder ? folder : "Not set — using browser storage"}
+                </p>
+              </div>
+              <button
+                onClick={choose}
+                className="shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold bg-primary text-primary-foreground hover:opacity-90 transition"
+              >
+                {folder ? "Change" : "Choose folder"}
+              </button>
+            </div>
+            {folder && perm === "prompt" && (
+              <div className="flex items-center justify-between gap-4 px-5 py-4">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold">Access needed</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Grant access again to play your files.</p>
+                </div>
+                <button
+                  onClick={reconnect}
+                  className="shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold bg-secondary hover:bg-secondary/70 transition"
+                >
+                  Reconnect
+                </button>
+              </div>
+            )}
+            {folder && pendingMigration > 0 && (
+              <div className="flex items-center justify-between gap-4 px-5 py-4">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold">Move existing music to folder</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {progress ?? `${pendingMigration} track${pendingMigration > 1 ? "s" : ""} still in browser storage`}
+                  </p>
+                </div>
+                <button
+                  onClick={migrate}
+                  disabled={busy}
+                  className="shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold bg-secondary hover:bg-secondary/70 transition disabled:opacity-50"
+                >
+                  {busy ? "Moving…" : "Move now"}
+                </button>
+              </div>
+            )}
+            {folder && (
+              <div className="flex items-center justify-between gap-4 px-5 py-4">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold">Disconnect folder</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Files stay on your computer.</p>
+                </div>
+                <button
+                  onClick={forget}
+                  className="shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold text-destructive hover:bg-destructive/10 transition"
+                >
+                  Disconnect
+                </button>
+              </div>
+            )}
+            <div className="px-5 py-4">
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                New uploads are written straight into this folder, so you can add as much music as your
+                drive holds — no browser storage limits.
+              </p>
+            </div>
+          </>
+        )}
+      </div>
+    </section>
+  );
+}
+
 function SingleForm({ onClose, onCreate }: { onClose: () => void; onCreate: (p: Project) => void }) {
   const [title, setTitle] = useState("");
   const [artist, setArtist] = useState("");
@@ -7972,8 +8179,7 @@ function SingleForm({ onClose, onCreate }: { onClose: () => void; onCreate: (p: 
     if (!canSubmit || !audioFile) return;
     setUploading(true);
     const id = genId();
-    const audioKey = `audio_${id}`;
-    await dbPut(audioKey, audioFile);
+    const { audioKey, filePath } = await saveTrackFile(id, audioFile);
     const duration = await getAudioDuration(audioFile);
     onCreate({
       id,
@@ -7982,7 +8188,7 @@ function SingleForm({ onClose, onCreate }: { onClose: () => void; onCreate: (p: 
       coverDataUrl: cover,
       isSingle: true,
       isPublic,
-      tracks: [{ id: genId(), name: title.trim(), audioKey, duration }],
+      tracks: [{ id: genId(), name: title.trim(), audioKey, filePath, duration }],
       createdAt: Date.now(),
     });
     setUploading(false);
