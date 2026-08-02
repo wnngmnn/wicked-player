@@ -5542,6 +5542,8 @@ function SettingsView({ projects, setProjects, showToast, player, setPlayer, aud
         ))}
       </div>
 
+      <div key={settingsTab} className="animate-app-tab-in">
+
       {/* ── Custom Theme Builder ── */}
       {settingsTab === "colors" && (
       <section className="mb-8">
@@ -6067,6 +6069,7 @@ function SettingsView({ projects, setProjects, showToast, player, setPlayer, aud
         </div>
       </section>
       )}
+      </div>
     </div>
   );
 }
