@@ -2506,7 +2506,7 @@ function HomeView({
               <p className="text-xs text-muted-foreground/50 mb-5 italic">Tip: drag one album on top of another to create a folder</p>
             )}
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5">
+            <div className="stagger-children grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5">
               {/* Folders first */}
               {filteredFolders.map(folder => (
                 <FolderCard
@@ -3609,7 +3609,7 @@ function PlaylistsView({
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5">
+          <div className="stagger-children grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5">
             {playlists.map(pl => (
               <PlaylistCard
                 key={pl.id}
@@ -4416,7 +4416,7 @@ function FavoritesView({ favorites, projects, playlists, player, playTrack, togg
             {favAlbums.length > 0 && (
               <section>
                 <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-4">Albums</h2>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
+                <div className="stagger-children grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
                   {favAlbums.map(proj => (
                     <div key={proj.id} className="group cursor-pointer" onClick={() => nav(`/project/${proj.id}`)}>
                       <div className="relative aspect-square rounded-lg overflow-hidden bg-card border border-border mb-3 shadow-lg transition-transform duration-200 group-hover:-translate-y-1">
@@ -4441,7 +4441,7 @@ function FavoritesView({ favorites, projects, playlists, player, playTrack, togg
             {favPlaylists.length > 0 && (
               <section>
                 <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-4">Playlists</h2>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
+                <div className="stagger-children grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
                   {favPlaylists.map(pl => (
                     <div key={pl.id} className="group cursor-pointer" onClick={() => setSidebarTab("playlists")}>
                       <div className="relative aspect-square rounded-lg overflow-hidden bg-card border border-border mb-3 shadow-lg transition-transform duration-200 group-hover:-translate-y-1">
@@ -4573,7 +4573,7 @@ function ProfileView({ projects, playlists, likedSongs, favorites, nav, setSideb
               <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Public Albums</h2>
               <span className="text-xs text-muted-foreground/50">({publicAlbums.length})</span>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-5">
+            <div className="stagger-children grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-5">
               {publicAlbums.map(proj => (
                 <div key={proj.id} className="group cursor-pointer" onClick={() => nav(`/project/${proj.id}`)}>
                   <div className="aspect-square rounded-lg overflow-hidden bg-card border border-border mb-3 shadow-md transition-transform duration-200 group-hover:-translate-y-1">
@@ -4599,7 +4599,7 @@ function ProfileView({ projects, playlists, likedSongs, favorites, nav, setSideb
               <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Private Albums</h2>
               <span className="text-xs text-muted-foreground/50">({privateAlbums.length})</span>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-5">
+            <div className="stagger-children grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-5">
               {privateAlbums.map(proj => (
                 <div key={proj.id} className="group cursor-pointer opacity-70 hover:opacity-100 transition-opacity" onClick={() => nav(`/project/${proj.id}`)}>
                   <div className="relative aspect-square rounded-lg overflow-hidden bg-card border border-border mb-3 shadow-md transition-transform duration-200 group-hover:-translate-y-1">
@@ -4626,7 +4626,7 @@ function ProfileView({ projects, playlists, likedSongs, favorites, nav, setSideb
               <Globe size={13} className="text-muted-foreground" />
               <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Public Playlists</h2>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-5">
+            <div className="stagger-children grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-5">
               {publicPlaylists.map(pl => (
                 <div key={pl.id} className="group cursor-pointer" onClick={() => setSidebarTab("playlists")}>
                   <div className="aspect-square rounded-lg overflow-hidden bg-card border border-border mb-3 shadow-md transition-transform duration-200 group-hover:-translate-y-1">
@@ -5542,6 +5542,8 @@ function SettingsView({ projects, setProjects, showToast, player, setPlayer, aud
         ))}
       </div>
 
+      <div key={settingsTab} className="animate-app-tab-in">
+
       {/* ── Custom Theme Builder ── */}
       {settingsTab === "colors" && (
       <section className="mb-8">
@@ -6067,6 +6069,7 @@ function SettingsView({ projects, setProjects, showToast, player, setPlayer, aud
         </div>
       </section>
       )}
+      </div>
     </div>
   );
 }
