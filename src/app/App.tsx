@@ -6006,6 +6006,11 @@ function SettingsView({ projects, setProjects, showToast, player, setPlayer, aud
       </section>
       )}
 
+      {/* ── Music folder ── */}
+      {settingsTab === "system" && (
+        <MusicFolderSection projects={projects} setProjects={setProjects} showToast={showToast} />
+      )}
+
       {/* ── Storage ── */}
       {settingsTab === "system" && (
       <section className="mb-8">
@@ -6021,7 +6026,7 @@ function SettingsView({ projects, setProjects, showToast, player, setPlayer, aud
           </div>
           <div className="flex items-center justify-between px-5 py-4">
             <p className="text-sm font-semibold">Storage Location</p>
-            <p className="text-sm text-muted-foreground">This device</p>
+            <p className="text-sm text-muted-foreground">Your computer</p>
           </div>
         </div>
       </section>
@@ -6038,7 +6043,7 @@ function SettingsView({ projects, setProjects, showToast, player, setPlayer, aud
           </div>
           <div className="px-5 py-4">
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Music is stored locally in your browser using IndexedDB. Share links work on the same device and browser. No data is sent to any server.
+              Music files live in the folder you pick on your own computer, like iTunes. If no folder is set, they fall back to browser storage. No data is sent to any server.
             </p>
           </div>
         </div>
@@ -7998,6 +8003,165 @@ function AlbumForm({ onClose, onCreate }: { onClose: () => void; onCreate: (p: P
         Create Album
       </button>
     </div>
+  );
+}
+
+function MusicFolderSection({ projects, setProjects, showToast }: {
+  projects: Project[];
+  setProjects: React.Dispatch<React.SetStateAction<Project[]>>;
+  showToast: (m: string) => void;
+}) {
+  const supported = isFsSupported();
+  const [folder, setFolder] = useState<string | null>(null);
+  const [perm, setPerm] = useState<"none" | "granted" | "prompt">("none");
+  const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState<string | null>(null);
+
+  const refresh = useCallback(async () => {
+    setFolder(await getSavedLibraryName());
+    setPerm(await libraryPermissionState());
+  }, []);
+
+  useEffect(() => { void refresh(); }, [refresh]);
+
+  const pendingMigration = projects.reduce(
+    (n, p) => n + p.tracks.filter(t => !t.filePath).length, 0);
+
+  const choose = async () => {
+    const name = await pickLibraryFolder();
+    if (name) showToast(`Music folder set to "${name}"`);
+    await refresh();
+  };
+
+  const reconnect = async () => {
+    const dir = await getLibraryDir(true);
+    if (dir) showToast("Music folder reconnected");
+    await refresh();
+  };
+
+  const migrate = async () => {
+    const dir = await getLibraryDir(true);
+    if (!dir) { showToast("Choose a music folder first"); return; }
+    setBusy(true);
+    let done = 0;
+    const total = pendingMigration;
+    const updated: Project[] = [];
+    for (const proj of projects) {
+      const tracks: Track[] = [];
+      for (const t of proj.tracks) {
+        if (t.filePath) { tracks.push(t); continue; }
+        try {
+          const blob = await dbGet(t.audioKey);
+          if (!blob) { tracks.push(t); continue; }
+          const file = new File([blob], `${t.name}.mp3`, { type: blob.type || "audio/mpeg" });
+          const filePath = await writeAudioFile(dir, t.id, file, file.name);
+          await dbDel(t.audioKey);
+          tracks.push({ ...t, filePath });
+        } catch (err) {
+          console.error("Migration failed for track", t.name, err);
+          tracks.push(t);
+        }
+        done++;
+        setProgress(`Moving ${done}/${total}…`);
+      }
+      updated.push({ ...proj, tracks });
+    }
+    setProjects(updated);
+    setBusy(false);
+    setProgress(null);
+    showToast("Library moved to your music folder");
+  };
+
+  const forget = async () => {
+    await forgetLibraryFolder();
+    await refresh();
+    showToast("Music folder disconnected");
+  };
+
+  return (
+    <section className="mb-8">
+      <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3">Music Folder</p>
+      <div className="bg-card border border-border rounded-lg overflow-hidden divide-y divide-border">
+        {!supported && (
+          <div className="px-5 py-4">
+            <p className="text-sm font-semibold mb-1">Not available in this browser</p>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Local folder libraries need a Chromium browser (Chrome, Edge, Opera) on desktop.
+              Music will keep using browser storage here.
+            </p>
+          </div>
+        )}
+        {supported && (
+          <>
+            <div className="flex items-center justify-between gap-4 px-5 py-4">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold">Library location</p>
+                <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                  {folder ? folder : "Not set — using browser storage"}
+                </p>
+              </div>
+              <button
+                onClick={choose}
+                className="shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold bg-primary text-primary-foreground hover:opacity-90 transition"
+              >
+                {folder ? "Change" : "Choose folder"}
+              </button>
+            </div>
+            {folder && perm === "prompt" && (
+              <div className="flex items-center justify-between gap-4 px-5 py-4">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold">Access needed</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Grant access again to play your files.</p>
+                </div>
+                <button
+                  onClick={reconnect}
+                  className="shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold bg-secondary hover:bg-secondary/70 transition"
+                >
+                  Reconnect
+                </button>
+              </div>
+            )}
+            {folder && pendingMigration > 0 && (
+              <div className="flex items-center justify-between gap-4 px-5 py-4">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold">Move existing music to folder</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {progress ?? `${pendingMigration} track${pendingMigration > 1 ? "s" : ""} still in browser storage`}
+                  </p>
+                </div>
+                <button
+                  onClick={migrate}
+                  disabled={busy}
+                  className="shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold bg-secondary hover:bg-secondary/70 transition disabled:opacity-50"
+                >
+                  {busy ? "Moving…" : "Move now"}
+                </button>
+              </div>
+            )}
+            {folder && (
+              <div className="flex items-center justify-between gap-4 px-5 py-4">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold">Disconnect folder</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Files stay on your computer.</p>
+                </div>
+                <button
+                  onClick={forget}
+                  className="shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold text-destructive hover:bg-destructive/10 transition"
+                >
+                  Disconnect
+                </button>
+              </div>
+            )}
+            <div className="px-5 py-4">
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                New uploads are written straight into this folder, so you can add as much music as your
+                drive holds — no browser storage limits.
+              </p>
+            </div>
+          </>
+        )}
+      </div>
+    </section>
   );
 }
 
