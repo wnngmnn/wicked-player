@@ -8288,3 +8288,36 @@ function SingleForm({ onClose, onCreate }: { onClose: () => void; onCreate: (p: 
     </div>
   );
 }
+
+// ── Storage usage row (settings → system) ──────────────────────────────────
+
+function StorageUsageRow() {
+  const [info, setInfo] = useState<{ usage: number; quota: number } | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const refresh = useCallback(() => { storageEstimate().then(setInfo); }, []);
+  useEffect(() => { refresh(); }, [refresh]);
+
+  const mb = (n: number) => `${(n / 1024 / 1024).toFixed(1)} MB`;
+
+  return (
+    <div className="flex items-center justify-between px-5 py-4 gap-3">
+      <div>
+        <p className="text-sm font-semibold">Browser Storage Used</p>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          {info ? `${mb(info.usage)} of ${(info.quota / 1024 / 1024 / 1024).toFixed(1)} GB available` : "Calculating…"}
+        </p>
+      </div>
+      <button
+        disabled={busy}
+        onClick={async () => {
+          setBusy(true);
+          try { await gcCovers(); } finally { setBusy(false); refresh(); }
+        }}
+        className="px-3 py-1.5 rounded-md text-xs font-semibold border border-border hover:bg-secondary transition-colors disabled:opacity-50"
+      >
+        {busy ? "Cleaning…" : "Reclaim space"}
+      </button>
+    </div>
+  );
+}
