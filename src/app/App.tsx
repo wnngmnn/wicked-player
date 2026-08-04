@@ -296,6 +296,10 @@ async function decodeImage(file: File): Promise<{ width: number; height: number;
   }
 }
 
+function canvasToBlob(canvas: HTMLCanvasElement, quality: number): Promise<Blob | null> {
+  return new Promise(resolve => canvas.toBlob(resolve, "image/jpeg", quality));
+}
+
 async function resizeCover(file: File): Promise<string> {
   const decoded = await decodeImage(file);
   try {
