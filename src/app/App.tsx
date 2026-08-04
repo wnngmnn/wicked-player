@@ -238,14 +238,35 @@ const fmt = (s: number) => {
 // Library metadata + cover art live in IndexedDB (see ./storage). Writes are
 // debounced so rapid state changes don't re-serialize the whole library.
 const persistTimers = new Map<StoreKey, ReturnType<typeof setTimeout>>();
+const pendingWrites = new Map<StoreKey, unknown[]>();
 
 function persist<T>(key: StoreKey, list: T[]) {
   const existing = persistTimers.get(key);
   if (existing) clearTimeout(existing);
+  pendingWrites.set(key, list as unknown[]);
   persistTimers.set(key, setTimeout(() => {
     persistTimers.delete(key);
+    pendingWrites.delete(key);
     saveCollection(key, list).catch(err => console.error(`Failed to save ${key}`, err));
   }, 250));
+}
+
+/** Writes anything still queued — used when the tab is closing/hidden. */
+function flushPersists() {
+  for (const [key, list] of pendingWrites) {
+    const t = persistTimers.get(key);
+    if (t) clearTimeout(t);
+    persistTimers.delete(key);
+    saveCollection(key, list).catch(() => { /* tab is going away */ });
+  }
+  pendingWrites.clear();
+}
+
+if (typeof window !== "undefined") {
+  window.addEventListener("pagehide", flushPersists);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") flushPersists();
+  });
 }
 
 
