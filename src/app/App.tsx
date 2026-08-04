@@ -5515,9 +5515,10 @@ function SettingsView({ projects, setProjects, showToast, player, setPlayer, aud
       tx.onerror = () => rej(tx.error);
     });
     setProjects([]);
-    localStorage.removeItem("melodia_projects");
+    await clearAll();
     showToast("All data cleared");
   };
+
 
   const totalTracks = projects.reduce((s, p) => s + p.tracks.length, 0);
   const accentOnLight = isLightColor(theme.accent);
