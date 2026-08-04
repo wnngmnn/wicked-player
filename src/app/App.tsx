@@ -312,15 +312,15 @@ async function resizeCover(file: File): Promise<string> {
     const w = decoded.width * r, h = decoded.height * r;
     ctx.fillStyle = "#000"; ctx.fillRect(0, 0, target, target);
     decoded.draw(ctx, (target - w) / 2, (target - h) / 2, w, h);
-    // Progressive quality: shrink until under ~600KB to keep localStorage happy
+    // Export as a JPEG blob (stored in IndexedDB — no base64, no quota pain).
     let quality = 0.92;
-    let dataUrl = canvas.toDataURL("image/jpeg", quality);
-    while (dataUrl.length > 800_000 && quality > 0.5) {
+    let blob = await canvasToBlob(canvas, quality);
+    while (blob && blob.size > 1_200_000 && quality > 0.5) {
       quality -= 0.1;
-      dataUrl = canvas.toDataURL("image/jpeg", quality);
+      blob = await canvasToBlob(canvas, quality);
     }
-    if (!dataUrl || dataUrl === "data:,") throw new Error("Canvas export failed");
-    return dataUrl;
+    if (!blob) throw new Error("Canvas export failed");
+    return await saveCover(blob);
   } finally {
     decoded.close();
   }
