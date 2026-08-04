@@ -16,7 +16,7 @@ import {
 } from "./library-fs";
 import {
   loadCollection, saveCollection, gcCovers, clearAll, storageEstimate,
-  requestPersistentStorage, type StoreKey,
+  requestPersistentStorage, saveCover, type StoreKey,
 } from "./storage";
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -238,14 +238,35 @@ const fmt = (s: number) => {
 // Library metadata + cover art live in IndexedDB (see ./storage). Writes are
 // debounced so rapid state changes don't re-serialize the whole library.
 const persistTimers = new Map<StoreKey, ReturnType<typeof setTimeout>>();
+const pendingWrites = new Map<StoreKey, unknown[]>();
 
 function persist<T>(key: StoreKey, list: T[]) {
   const existing = persistTimers.get(key);
   if (existing) clearTimeout(existing);
+  pendingWrites.set(key, list as unknown[]);
   persistTimers.set(key, setTimeout(() => {
     persistTimers.delete(key);
+    pendingWrites.delete(key);
     saveCollection(key, list).catch(err => console.error(`Failed to save ${key}`, err));
   }, 250));
+}
+
+/** Writes anything still queued — used when the tab is closing/hidden. */
+function flushPersists() {
+  for (const [key, list] of pendingWrites) {
+    const t = persistTimers.get(key);
+    if (t) clearTimeout(t);
+    persistTimers.delete(key);
+    saveCollection(key, list).catch(() => { /* tab is going away */ });
+  }
+  pendingWrites.clear();
+}
+
+if (typeof window !== "undefined") {
+  window.addEventListener("pagehide", flushPersists);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") flushPersists();
+  });
 }
 
 
@@ -258,7 +279,7 @@ function parseRoute() {
 }
 
 const MAX_COVER_INPUT_BYTES = 40 * 1024 * 1024; // 40MB hard cap
-const MAX_GIF_STORED_BYTES = 6 * 1024 * 1024; // GIFs are stored as-is; keep small
+const MAX_GIF_STORED_BYTES = 25 * 1024 * 1024; // GIFs stored as blobs in IndexedDB
 
 async function decodeImage(file: File): Promise<{ width: number; height: number; draw: (ctx: CanvasRenderingContext2D, dx: number, dy: number, dw: number, dh: number) => void; close: () => void }> {
   // Prefer createImageBitmap (streams, handles huge files, off main thread)
@@ -296,6 +317,10 @@ async function decodeImage(file: File): Promise<{ width: number; height: number;
   }
 }
 
+function canvasToBlob(canvas: HTMLCanvasElement, quality: number): Promise<Blob | null> {
+  return new Promise(resolve => canvas.toBlob(resolve, "image/jpeg", quality));
+}
+
 async function resizeCover(file: File): Promise<string> {
   const decoded = await decodeImage(file);
   try {
@@ -312,15 +337,15 @@ async function resizeCover(file: File): Promise<string> {
     const w = decoded.width * r, h = decoded.height * r;
     ctx.fillStyle = "#000"; ctx.fillRect(0, 0, target, target);
     decoded.draw(ctx, (target - w) / 2, (target - h) / 2, w, h);
-    // Progressive quality: shrink until under ~600KB to keep localStorage happy
+    // Export as a JPEG blob (stored in IndexedDB — no base64, no quota pain).
     let quality = 0.92;
-    let dataUrl = canvas.toDataURL("image/jpeg", quality);
-    while (dataUrl.length > 800_000 && quality > 0.5) {
+    let blob = await canvasToBlob(canvas, quality);
+    while (blob && blob.size > 1_200_000 && quality > 0.5) {
       quality -= 0.1;
-      dataUrl = canvas.toDataURL("image/jpeg", quality);
+      blob = await canvasToBlob(canvas, quality);
     }
-    if (!dataUrl || dataUrl === "data:,") throw new Error("Canvas export failed");
-    return dataUrl;
+    if (!blob) throw new Error("Canvas export failed");
+    return await saveCover(blob);
   } finally {
     decoded.close();
   }
@@ -337,12 +362,7 @@ async function processCover(file: File): Promise<string> {
         window.alert(`This GIF is ${(file.size / 1024 / 1024).toFixed(1)} MB — too large to store. Please use one under 6 MB, or convert to a static image.`);
         return "";
       }
-      return await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = () => reject(new Error("Failed to read GIF"));
-        reader.readAsDataURL(file);
-      });
+      return await saveCover(file);
     }
     return await resizeCover(file);
   } catch (err) {
