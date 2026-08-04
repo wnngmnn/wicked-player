@@ -1408,9 +1408,34 @@ export default function App() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showNextUp, setShowNextUp] = useState(false);
   const [nextUpPreview, setNextUpPreview] = useState(false);
-  const [likedSongs, setLikedSongs] = useState<LikedSong[]>(loadLikedSongs);
-  const [favorites, setFavorites] = useState<FavoriteItem[]>(loadFavorites);
-  const [folders, setFolders] = useState<Folder[]>(loadFolders);
+  const [likedSongs, setLikedSongs] = useState<LikedSong[]>([]);
+  const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
+  const [folders, setFolders] = useState<Folder[]>([]);
+
+  // Hydrate the library from IndexedDB (migrating any legacy localStorage data)
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        requestPersistentStorage();
+        const [p, pl, liked, favs, fold] = await Promise.all([
+          loadCollection<Project>("projects"),
+          loadCollection<Playlist>("playlists"),
+          loadCollection<LikedSong>("liked"),
+          loadCollection<FavoriteItem>("favorites"),
+          loadCollection<Folder>("folders"),
+        ]);
+        if (!alive) return;
+        setProjects(p); setPlaylists(pl);
+        setLikedSongs(liked); setFavorites(favs); setFolders(fold);
+      } catch (err) {
+        console.error("Failed to load library", err);
+      } finally {
+        if (alive) setHydrated(true);
+      }
+    })();
+    return () => { alive = false; };
+  }, []);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
