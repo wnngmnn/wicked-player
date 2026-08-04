@@ -6038,9 +6038,11 @@ function SettingsView({ projects, setProjects, showToast, player, setPlayer, aud
             <p className="text-sm font-semibold">Storage Location</p>
             <p className="text-sm text-muted-foreground">Your computer</p>
           </div>
+          <StorageUsageRow />
         </div>
       </section>
       )}
+
 
       {/* ── About ── */}
       {settingsTab === "system" && (
