@@ -14,6 +14,10 @@ import {
   libraryPermissionState, forgetLibraryFolder, writeAudioFile, readAudioFile,
   deleteAudioFile,
 } from "./library-fs";
+import {
+  loadCollection, saveCollection, gcCovers, clearAll, storageEstimate,
+  requestPersistentStorage, type StoreKey,
+} from "./storage";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -231,42 +235,19 @@ const fmt = (s: number) => {
   return `${m}:${sec.toString().padStart(2, "0")}`;
 };
 
-function loadProjects(): Project[] {
-  try { return JSON.parse(localStorage.getItem("melodia_projects") || "[]"); }
-  catch { return []; }
-}
-function safeSetItem(key: string, value: string) {
-  try {
-    localStorage.setItem(key, value);
-  } catch (err) {
-    console.error("localStorage write failed", err);
-    if (typeof window !== "undefined") {
-      const msg = (err as { name?: string })?.name === "QuotaExceededError"
-        ? "Storage is full. Try using a smaller cover image or removing unused projects."
-        : "Failed to save changes to browser storage.";
-      // Fire once, non-blocking
-      queueMicrotask(() => { try { window.alert(msg); } catch {} });
-    }
-  }
-}
-function saveProjects(p: Project[]) {
-  safeSetItem("melodia_projects", JSON.stringify(p));
+// Library metadata + cover art live in IndexedDB (see ./storage). Writes are
+// debounced so rapid state changes don't re-serialize the whole library.
+const persistTimers = new Map<StoreKey, ReturnType<typeof setTimeout>>();
+
+function persist<T>(key: StoreKey, list: T[]) {
+  const existing = persistTimers.get(key);
+  if (existing) clearTimeout(existing);
+  persistTimers.set(key, setTimeout(() => {
+    persistTimers.delete(key);
+    saveCollection(key, list).catch(err => console.error(`Failed to save ${key}`, err));
+  }, 250));
 }
 
-function loadPlaylists(): Playlist[] {
-  try { return JSON.parse(localStorage.getItem("melodia_playlists") || "[]"); }
-  catch { return []; }
-}
-function savePlaylists(p: Playlist[]) {
-  safeSetItem("melodia_playlists", JSON.stringify(p));
-}
-
-function loadLikedSongs(): LikedSong[] { try { return JSON.parse(localStorage.getItem("melodia_liked") || "[]"); } catch { return []; } }
-function saveLikedSongs(s: LikedSong[]) { safeSetItem("melodia_liked", JSON.stringify(s)); }
-function loadFavorites(): FavoriteItem[] { try { return JSON.parse(localStorage.getItem("melodia_favorites") || "[]"); } catch { return []; } }
-function saveFavorites(f: FavoriteItem[]) { safeSetItem("melodia_favorites", JSON.stringify(f)); }
-function loadFolders(): Folder[] { try { return JSON.parse(localStorage.getItem("melodia_folders") || "[]"); } catch { return []; } }
-function saveFolders(f: Folder[]) { safeSetItem("melodia_folders", JSON.stringify(f)); }
 
 
 function parseRoute() {
@@ -1408,8 +1389,9 @@ function CassetteLogo({ size = 32 }: { size?: number }) {
 // ── App root ───────────────────────────────────────────────────────────────
 
 export default function App() {
-  const [projects, setProjects] = useState<Project[]>(loadProjects);
-  const [playlists, setPlaylists] = useState<Playlist[]>(loadPlaylists);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const [hydrated, setHydrated] = useState(false);
   const [route, setRoute] = useState(parseRoute);
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>("home");
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -1426,9 +1408,34 @@ export default function App() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showNextUp, setShowNextUp] = useState(false);
   const [nextUpPreview, setNextUpPreview] = useState(false);
-  const [likedSongs, setLikedSongs] = useState<LikedSong[]>(loadLikedSongs);
-  const [favorites, setFavorites] = useState<FavoriteItem[]>(loadFavorites);
-  const [folders, setFolders] = useState<Folder[]>(loadFolders);
+  const [likedSongs, setLikedSongs] = useState<LikedSong[]>([]);
+  const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
+  const [folders, setFolders] = useState<Folder[]>([]);
+
+  // Hydrate the library from IndexedDB (migrating any legacy localStorage data)
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        requestPersistentStorage();
+        const [p, pl, liked, favs, fold] = await Promise.all([
+          loadCollection<Project>("projects"),
+          loadCollection<Playlist>("playlists"),
+          loadCollection<LikedSong>("liked"),
+          loadCollection<FavoriteItem>("favorites"),
+          loadCollection<Folder>("folders"),
+        ]);
+        if (!alive) return;
+        setProjects(p); setPlaylists(pl);
+        setLikedSongs(liked); setFavorites(favs); setFolders(fold);
+      } catch (err) {
+        console.error("Failed to load library", err);
+      } finally {
+        if (alive) setHydrated(true);
+      }
+    })();
+    return () => { alive = false; };
+  }, []);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
@@ -1481,8 +1488,8 @@ export default function App() {
     return () => window.removeEventListener("hashchange", handle);
   }, []);
 
-  useEffect(() => { saveProjects(projects); }, [projects]);
-  useEffect(() => { savePlaylists(playlists); }, [playlists]);
+  useEffect(() => { if (hydrated) persist("projects", projects); }, [projects, hydrated]);
+  useEffect(() => { if (hydrated) persist("playlists", playlists); }, [playlists, hydrated]);
   useEffect(() => { saveSavedCustomThemes(savedCustomThemes); }, [savedCustomThemes]);
   useEffect(() => { saveVisualizerConfig(visualizer); setTheme(prev => ({ ...prev, visualizer })); }, [visualizer]);
 
@@ -1497,9 +1504,9 @@ export default function App() {
       setNextUpPreview(false);
     }
   }, [player.currentTime, player.duration, player.isPlaying, player.queuePos, player.queue, showNextUp, isFullscreen]);
-  useEffect(() => { saveLikedSongs(likedSongs); }, [likedSongs]);
-  useEffect(() => { saveFavorites(favorites); }, [favorites]);
-  useEffect(() => { saveFolders(folders); }, [folders]);
+  useEffect(() => { if (hydrated) persist("liked", likedSongs); }, [likedSongs, hydrated]);
+  useEffect(() => { if (hydrated) persist("favorites", favorites); }, [favorites, hydrated]);
+  useEffect(() => { if (hydrated) persist("folders", folders); }, [folders, hydrated]);
 
   const showToast = useCallback((msg: string) => {
     const id = Date.now();
@@ -5508,9 +5515,10 @@ function SettingsView({ projects, setProjects, showToast, player, setPlayer, aud
       tx.onerror = () => rej(tx.error);
     });
     setProjects([]);
-    localStorage.removeItem("melodia_projects");
+    await clearAll();
     showToast("All data cleared");
   };
+
 
   const totalTracks = projects.reduce((s, p) => s + p.tracks.length, 0);
   const accentOnLight = isLightColor(theme.accent);
@@ -6030,9 +6038,11 @@ function SettingsView({ projects, setProjects, showToast, player, setPlayer, aud
             <p className="text-sm font-semibold">Storage Location</p>
             <p className="text-sm text-muted-foreground">Your computer</p>
           </div>
+          <StorageUsageRow />
         </div>
       </section>
       )}
+
 
       {/* ── About ── */}
       {settingsTab === "system" && (
@@ -8274,6 +8284,39 @@ function SingleForm({ onClose, onCreate }: { onClose: () => void; onCreate: (p: 
         className="w-full bg-primary text-white py-3.5 rounded-md font-bold text-sm hover:bg-primary/85 transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shadow-md shadow-primary/20"
       >
         {uploading ? "Uploading…" : "Add to Library"}
+      </button>
+    </div>
+  );
+}
+
+// ── Storage usage row (settings → system) ──────────────────────────────────
+
+function StorageUsageRow() {
+  const [info, setInfo] = useState<{ usage: number; quota: number } | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const refresh = useCallback(() => { storageEstimate().then(setInfo); }, []);
+  useEffect(() => { refresh(); }, [refresh]);
+
+  const mb = (n: number) => `${(n / 1024 / 1024).toFixed(1)} MB`;
+
+  return (
+    <div className="flex items-center justify-between px-5 py-4 gap-3">
+      <div>
+        <p className="text-sm font-semibold">Browser Storage Used</p>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          {info ? `${mb(info.usage)} of ${(info.quota / 1024 / 1024 / 1024).toFixed(1)} GB available` : "Calculating…"}
+        </p>
+      </div>
+      <button
+        disabled={busy}
+        onClick={async () => {
+          setBusy(true);
+          try { await gcCovers(); } finally { setBusy(false); refresh(); }
+        }}
+        className="px-3 py-1.5 rounded-md text-xs font-semibold border border-border hover:bg-secondary transition-colors disabled:opacity-50"
+      >
+        {busy ? "Cleaning…" : "Reclaim space"}
       </button>
     </div>
   );
