@@ -341,12 +341,7 @@ async function processCover(file: File): Promise<string> {
         window.alert(`This GIF is ${(file.size / 1024 / 1024).toFixed(1)} MB — too large to store. Please use one under 6 MB, or convert to a static image.`);
         return "";
       }
-      return await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = () => reject(new Error("Failed to read GIF"));
-        reader.readAsDataURL(file);
-      });
+      return await saveCover(file);
     }
     return await resizeCover(file);
   } catch (err) {
