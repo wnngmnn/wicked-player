@@ -1504,9 +1504,9 @@ export default function App() {
       setNextUpPreview(false);
     }
   }, [player.currentTime, player.duration, player.isPlaying, player.queuePos, player.queue, showNextUp, isFullscreen]);
-  useEffect(() => { saveLikedSongs(likedSongs); }, [likedSongs]);
-  useEffect(() => { saveFavorites(favorites); }, [favorites]);
-  useEffect(() => { saveFolders(folders); }, [folders]);
+  useEffect(() => { if (hydrated) persist("liked", likedSongs); }, [likedSongs, hydrated]);
+  useEffect(() => { if (hydrated) persist("favorites", favorites); }, [favorites, hydrated]);
+  useEffect(() => { if (hydrated) persist("folders", folders); }, [folders, hydrated]);
 
   const showToast = useCallback((msg: string) => {
     const id = Date.now();
