@@ -258,7 +258,7 @@ function parseRoute() {
 }
 
 const MAX_COVER_INPUT_BYTES = 40 * 1024 * 1024; // 40MB hard cap
-const MAX_GIF_STORED_BYTES = 6 * 1024 * 1024; // GIFs are stored as-is; keep small
+const MAX_GIF_STORED_BYTES = 25 * 1024 * 1024; // GIFs stored as blobs in IndexedDB
 
 async function decodeImage(file: File): Promise<{ width: number; height: number; draw: (ctx: CanvasRenderingContext2D, dx: number, dy: number, dw: number, dh: number) => void; close: () => void }> {
   // Prefer createImageBitmap (streams, handles huge files, off main thread)
