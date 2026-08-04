@@ -1389,8 +1389,9 @@ function CassetteLogo({ size = 32 }: { size?: number }) {
 // ── App root ───────────────────────────────────────────────────────────────
 
 export default function App() {
-  const [projects, setProjects] = useState<Project[]>(loadProjects);
-  const [playlists, setPlaylists] = useState<Playlist[]>(loadPlaylists);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const [hydrated, setHydrated] = useState(false);
   const [route, setRoute] = useState(parseRoute);
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>("home");
   const [sidebarOpen, setSidebarOpen] = useState(true);
