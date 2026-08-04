@@ -231,42 +231,19 @@ const fmt = (s: number) => {
   return `${m}:${sec.toString().padStart(2, "0")}`;
 };
 
-function loadProjects(): Project[] {
-  try { return JSON.parse(localStorage.getItem("melodia_projects") || "[]"); }
-  catch { return []; }
-}
-function safeSetItem(key: string, value: string) {
-  try {
-    localStorage.setItem(key, value);
-  } catch (err) {
-    console.error("localStorage write failed", err);
-    if (typeof window !== "undefined") {
-      const msg = (err as { name?: string })?.name === "QuotaExceededError"
-        ? "Storage is full. Try using a smaller cover image or removing unused projects."
-        : "Failed to save changes to browser storage.";
-      // Fire once, non-blocking
-      queueMicrotask(() => { try { window.alert(msg); } catch {} });
-    }
-  }
-}
-function saveProjects(p: Project[]) {
-  safeSetItem("melodia_projects", JSON.stringify(p));
+// Library metadata + cover art live in IndexedDB (see ./storage). Writes are
+// debounced so rapid state changes don't re-serialize the whole library.
+const persistTimers = new Map<StoreKey, ReturnType<typeof setTimeout>>();
+
+function persist<T>(key: StoreKey, list: T[]) {
+  const existing = persistTimers.get(key);
+  if (existing) clearTimeout(existing);
+  persistTimers.set(key, setTimeout(() => {
+    persistTimers.delete(key);
+    saveCollection(key, list).catch(err => console.error(`Failed to save ${key}`, err));
+  }, 250));
 }
 
-function loadPlaylists(): Playlist[] {
-  try { return JSON.parse(localStorage.getItem("melodia_playlists") || "[]"); }
-  catch { return []; }
-}
-function savePlaylists(p: Playlist[]) {
-  safeSetItem("melodia_playlists", JSON.stringify(p));
-}
-
-function loadLikedSongs(): LikedSong[] { try { return JSON.parse(localStorage.getItem("melodia_liked") || "[]"); } catch { return []; } }
-function saveLikedSongs(s: LikedSong[]) { safeSetItem("melodia_liked", JSON.stringify(s)); }
-function loadFavorites(): FavoriteItem[] { try { return JSON.parse(localStorage.getItem("melodia_favorites") || "[]"); } catch { return []; } }
-function saveFavorites(f: FavoriteItem[]) { safeSetItem("melodia_favorites", JSON.stringify(f)); }
-function loadFolders(): Folder[] { try { return JSON.parse(localStorage.getItem("melodia_folders") || "[]"); } catch { return []; } }
-function saveFolders(f: Folder[]) { safeSetItem("melodia_folders", JSON.stringify(f)); }
 
 
 function parseRoute() {
