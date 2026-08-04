@@ -14,6 +14,10 @@ import {
   libraryPermissionState, forgetLibraryFolder, writeAudioFile, readAudioFile,
   deleteAudioFile,
 } from "./library-fs";
+import {
+  loadCollection, saveCollection, gcCovers, clearAll, storageEstimate,
+  requestPersistentStorage, type StoreKey,
+} from "./storage";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
