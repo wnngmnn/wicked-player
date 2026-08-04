@@ -1488,8 +1488,8 @@ export default function App() {
     return () => window.removeEventListener("hashchange", handle);
   }, []);
 
-  useEffect(() => { saveProjects(projects); }, [projects]);
-  useEffect(() => { savePlaylists(playlists); }, [playlists]);
+  useEffect(() => { if (hydrated) persist("projects", projects); }, [projects, hydrated]);
+  useEffect(() => { if (hydrated) persist("playlists", playlists); }, [playlists, hydrated]);
   useEffect(() => { saveSavedCustomThemes(savedCustomThemes); }, [savedCustomThemes]);
   useEffect(() => { saveVisualizerConfig(visualizer); setTheme(prev => ({ ...prev, visualizer })); }, [visualizer]);
 
