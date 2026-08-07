@@ -286,7 +286,13 @@ async function decodeImage(file: File): Promise<{ width: number; height: number;
   // Prefer createImageBitmap (streams, handles huge files, off main thread)
   if (typeof createImageBitmap === "function") {
     try {
-      const bitmap = await createImageBitmap(file);
+      // Ask the decoder for a bounded bitmap directly. This avoids first
+      // materializing a 50–200 MB full-resolution pixel buffer in memory.
+      const bitmap = await createImageBitmap(file, {
+        resizeWidth: COVER_SIZE,
+        resizeHeight: COVER_SIZE,
+        resizeQuality: "high",
+      });
       return {
         width: bitmap.width,
         height: bitmap.height,
@@ -1456,7 +1462,10 @@ export default function App() {
         if (alive) setHydrated(true);
       }
     })();
-    return () => { alive = false; };
+    return () => {
+      alive = false;
+      releaseAllCoverUrls();
+    };
   }, []);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
