@@ -16,7 +16,7 @@ import {
 } from "./library-fs";
 import {
   loadCollection, saveCollection, gcCovers, clearAll, storageEstimate,
-  requestPersistentStorage, saveCover, type StoreKey,
+  requestPersistentStorage, saveCover, releaseAllCoverUrls, type StoreKey,
 } from "./storage";
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -278,8 +278,9 @@ function parseRoute() {
   return { page: "home" as const, id: undefined };
 }
 
-const MAX_COVER_INPUT_BYTES = 40 * 1024 * 1024; // 40MB hard cap
-const MAX_GIF_STORED_BYTES = 25 * 1024 * 1024; // GIFs stored as blobs in IndexedDB
+const MAX_COVER_INPUT_BYTES = 16 * 1024 * 1024;
+const MAX_COVER_PIXELS = 16_000_000;
+const COVER_SIZE = 768;
 
 async function decodeImage(file: File): Promise<{ width: number; height: number; draw: (ctx: CanvasRenderingContext2D, dx: number, dy: number, dw: number, dh: number) => void; close: () => void }> {
   // Prefer createImageBitmap (streams, handles huge files, off main thread)
@@ -325,8 +326,12 @@ async function resizeCover(file: File): Promise<string> {
   const decoded = await decodeImage(file);
   try {
     if (!decoded.width || !decoded.height) throw new Error("Empty image dimensions");
-    // Target square size: scale down when source is small; cap at 1400.
-    const target = Math.min(1400, Math.max(decoded.width, decoded.height));
+    if (decoded.width * decoded.height > MAX_COVER_PIXELS) {
+      throw new Error(`Image dimensions are too large (${decoded.width}×${decoded.height}). Use an image under 16 megapixels`);
+    }
+    // A fixed thumbnail keeps decoded memory predictable (~2.3 MB per cover)
+    // regardless of the original image dimensions.
+    const target = Math.min(COVER_SIZE, Math.max(decoded.width, decoded.height));
     const canvas = document.createElement("canvas");
     canvas.width = target; canvas.height = target;
     const ctx = canvas.getContext("2d");
@@ -337,15 +342,17 @@ async function resizeCover(file: File): Promise<string> {
     const w = decoded.width * r, h = decoded.height * r;
     ctx.fillStyle = "#000"; ctx.fillRect(0, 0, target, target);
     decoded.draw(ctx, (target - w) / 2, (target - h) / 2, w, h);
-    // Export as a JPEG blob (stored in IndexedDB — no base64, no quota pain).
-    let quality = 0.92;
+    let quality = 0.86;
     let blob = await canvasToBlob(canvas, quality);
-    while (blob && blob.size > 1_200_000 && quality > 0.5) {
+    while (blob && blob.size > 500_000 && quality > 0.5) {
       quality -= 0.1;
       blob = await canvasToBlob(canvas, quality);
     }
     if (!blob) throw new Error("Canvas export failed");
-    return await saveCover(blob);
+    const result = await saveCover(blob);
+    canvas.width = 1;
+    canvas.height = 1;
+    return result;
   } finally {
     decoded.close();
   }
@@ -353,22 +360,17 @@ async function resizeCover(file: File): Promise<string> {
 
 async function processCover(file: File): Promise<string> {
   if (file.size > MAX_COVER_INPUT_BYTES) {
-    window.alert(`That image is too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Please pick one under 40 MB.`);
+    window.alert(`That image is too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Please pick one under 16 MB.`);
     return "";
   }
   try {
-    if (file.type === "image/gif") {
-      if (file.size > MAX_GIF_STORED_BYTES) {
-        window.alert(`This GIF is ${(file.size / 1024 / 1024).toFixed(1)} MB — too large to store. Please use one under 6 MB, or convert to a static image.`);
-        return "";
-      }
-      return await saveCover(file);
-    }
+    // Animated GIFs can occupy hundreds of MB after frame decoding. Converting
+    // every format to one bounded JPEG frame prevents that memory spike.
     return await resizeCover(file);
   } catch (err) {
     console.error("Cover upload failed", err);
     const msg = (err as Error)?.message || "Unknown error";
-    window.alert(`Couldn't use that image: ${msg}. Try a different file (JPG or PNG under 40 MB).`);
+    window.alert(`Couldn't use that image: ${msg}. Try a JPG, PNG, WebP, or GIF under 16 MB.`);
     return "";
   }
 }

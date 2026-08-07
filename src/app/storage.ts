@@ -10,6 +10,7 @@ const META = "meta";
 const COVERS = "covers";
 
 let _db: IDBDatabase | null = null;
+let gcTimer: ReturnType<typeof setTimeout> | null = null;
 
 function open(): Promise<IDBDatabase> {
   if (_db) return Promise.resolve(_db);
@@ -66,6 +67,15 @@ export async function saveCover(source: Blob | string): Promise<string> {
   refByUrl.set(url, key);
   urlByKey.set(key, url);
   return url;
+}
+
+/** Releases decoded/browser memory for a cover that is no longer displayed. */
+export function releaseCover(value: string | null | undefined): void {
+  if (!value || !value.startsWith("blob:")) return;
+  const key = refByUrl.get(value);
+  try { URL.revokeObjectURL(value); } catch { /* already released */ }
+  refByUrl.delete(value);
+  if (key && urlByKey.get(key) === value) urlByKey.delete(key);
 }
 
 /** Converts an in-memory cover value into a persistable reference. */
@@ -148,6 +158,16 @@ export async function saveCollection<T>(key: StoreKey, list: T[]): Promise<void>
     ? await mapCovers(list as WithCover[], toRef)
     : list;
   await put(META, key, payload);
+  // Replacement uploads leave the previous blob orphaned. Clean those up once
+  // all debounced collection writes have settled, rather than retaining them
+  // until the user manually reclaims storage.
+  if (HAS_COVERS.includes(key)) {
+    if (gcTimer) clearTimeout(gcTimer);
+    gcTimer = setTimeout(() => {
+      gcTimer = null;
+      gcCovers().catch(() => { /* best-effort maintenance */ });
+    }, 2_000);
+  }
 }
 
 /** Removes cover blobs no longer referenced by any collection. */
@@ -178,6 +198,15 @@ export async function clearAll(): Promise<void> {
     try { localStorage.removeItem(LEGACY_KEYS[key]); } catch { /* ignore */ }
   }
   await gcCovers();
+}
+
+/** Releases all live object URLs when the app is unloaded. */
+export function releaseAllCoverUrls(): void {
+  for (const url of urlByKey.values()) {
+    try { URL.revokeObjectURL(url); } catch { /* already released */ }
+  }
+  urlByKey.clear();
+  refByUrl.clear();
 }
 
 /** Best-effort storage report for the settings screen. */
