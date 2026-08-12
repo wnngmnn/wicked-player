@@ -2886,6 +2886,8 @@ function ProjectView({ projects, setProjects, player, playTrack, nav, showToast,
   const [showEdit, setShowEdit] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [fileDragOver, setFileDragOver] = useState(false);
+  const [autoTag, setAutoTag] = useState(true);
+  const [tagging, setTagging] = useState<string | null>(null);
 
   if (!project) {
     return (
@@ -2900,6 +2902,19 @@ function ProjectView({ projects, setProjects, player, playTrack, nav, showToast,
   const update = (u: Partial<Project>) =>
     setProjects(prev => prev.map(p => p.id === projectId ? { ...p, ...u } : p));
 
+  const runTagging = async (proj: Project, tracks: Track[]) => {
+    if (!tracks.length) return;
+    setTagging(`Tagging 0/${tracks.length}…`);
+    const { tagged, skipped } = await tagTracks(proj, tracks, (done, total) =>
+      setTagging(`Tagging ${done}/${total}…`));
+    setTagging(null);
+    showToast(
+      tagged
+        ? `Tagged ${tagged} file${tagged > 1 ? "s" : ""}${skipped ? ` · ${skipped} skipped` : ""}`
+        : "No files could be tagged (MP3/AAC only)"
+    );
+  };
+
   const handleAddTracks = async (files: FileList) => {
     setUploading(true);
     const newTracks: Track[] = [];
@@ -2911,10 +2926,13 @@ function ProjectView({ projects, setProjects, player, playTrack, nav, showToast,
       const name = file.name.replace(/\.[^.]+$/, "");
       newTracks.push({ id, name, audioKey, filePath, duration });
     }
-    update({ tracks: [...project.tracks, ...newTracks] });
+    const allTracks = [...project.tracks, ...newTracks];
+    update({ tracks: allTracks });
     setUploading(false);
     if (newTracks.length > 0) showToast(`${newTracks.length} track${newTracks.length > 1 ? "s" : ""} added`);
+    if (autoTag && newTracks.length > 0) await runTagging({ ...project, tracks: allTracks }, newTracks);
   };
+
 
   const handleDeleteTrack = async (track: Track) => {
     await deleteTrackFile(track);
