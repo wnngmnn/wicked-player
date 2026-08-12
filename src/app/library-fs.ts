@@ -157,3 +157,18 @@ export async function deleteAudioFile(fileName: string): Promise<void> {
   if (!dir) return;
   try { await dir.removeEntry(fileName); } catch { /* already gone */ }
 }
+
+/** Replaces the contents of an existing library file (used when re-tagging). */
+export async function overwriteAudioFile(fileName: string, blob: Blob): Promise<boolean> {
+  const dir = await getLibraryDir(true);
+  if (!dir) return false;
+  try {
+    const handle = await dir.getFileHandle(fileName, { create: true });
+    const writable = await handle.createWritable();
+    await writable.write(blob);
+    await writable.close();
+    return true;
+  } catch {
+    return false;
+  }
+}

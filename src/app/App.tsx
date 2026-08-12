@@ -7,17 +7,19 @@ import {
   Music, Shuffle, ImagePlus, Link2, ListMusic,
   Library, User, Settings, PanelLeftClose, PanelLeftOpen, Home,
   Search, GripVertical, LayoutList, Maximize2, ChevronDown, ArrowUpDown,
-  Heart, Star, Globe, Lock, Unlock, Calendar
+  Heart, Star, Globe, Lock, Unlock, Calendar, Tag
 } from "lucide-react";
 import {
   isFsSupported, pickLibraryFolder, getSavedLibraryName, getLibraryDir,
   libraryPermissionState, forgetLibraryFolder, writeAudioFile, readAudioFile,
-  deleteAudioFile,
+  deleteAudioFile, overwriteAudioFile,
 } from "./library-fs";
+import { writeId3Tags, supportsId3 } from "./id3";
 import {
   loadCollection, saveCollection, gcCovers, clearAll, storageEstimate,
   requestPersistentStorage, saveCover, releaseAllCoverUrls, type StoreKey,
 } from "./storage";
+
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -39,7 +41,11 @@ interface Project {
   createdAt: number;
   isSingle?: boolean;
   isPublic?: boolean;
+  /** Disc number of this album within a multi-disc release. */
+  discNumber?: number;
+  genre?: string;
 }
+
 
 interface QueueItem {
   projectId: string;
@@ -213,6 +219,69 @@ async function deleteTrackFile(track: { audioKey: string; filePath?: string }): 
   if (track.filePath) await deleteAudioFile(track.filePath);
   try { await dbDel(track.audioKey); } catch { /* ignore */ }
 }
+
+// ── File tagging (writes real ID3 metadata into the audio files) ───────────
+
+/** Loads the album cover as raw bytes for embedding into files. */
+async function coverBytesFor(project: Project): Promise<{ mime: string; bytes: Uint8Array } | null> {
+  if (!project.coverDataUrl) return null;
+  try {
+    const res = await fetch(project.coverDataUrl);
+    const blob = await res.blob();
+    if (blob.size > 4_000_000) return null; // keep files reasonable
+    return { mime: blob.type || "image/jpeg", bytes: new Uint8Array(await blob.arrayBuffer()) };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Writes album metadata into every given track's file: the title the user
+ * typed, its position in the list, the album cover, the album artist and the
+ * album genre / disc number.
+ */
+async function tagTracks(
+  project: Project,
+  tracks: Track[],
+  onProgress?: (done: number, total: number) => void,
+): Promise<{ tagged: number; skipped: number }> {
+  const cover = await coverBytesFor(project);
+  const total = project.tracks.length;
+  let tagged = 0, skipped = 0;
+  for (let i = 0; i < tracks.length; i++) {
+    const track = tracks[i];
+    const index = project.tracks.findIndex(t => t.id === track.id);
+    const source = await loadTrackFile(track);
+    if (!source || !supportsId3(track.filePath, source.type)) { skipped++; onProgress?.(i + 1, tracks.length); continue; }
+    try {
+      const out = await writeId3Tags(source, {
+        title: track.name,
+        artist: project.artist,
+        albumArtist: project.artist,
+        album: project.name,
+        genre: project.genre,
+        track: (index >= 0 ? index : i) + 1,
+        trackTotal: total,
+        disc: project.discNumber,
+        year: new Date(project.createdAt).getFullYear(),
+        cover,
+      });
+      if (track.filePath) {
+        const ok = await overwriteAudioFile(track.filePath, out);
+        if (!ok) { skipped++; onProgress?.(i + 1, tracks.length); continue; }
+      } else {
+        await dbPut(track.audioKey, out);
+      }
+      tagged++;
+    } catch {
+      skipped++;
+    }
+    onProgress?.(i + 1, tracks.length);
+  }
+  return { tagged, skipped };
+}
+
+
 
 // ── Utils ──────────────────────────────────────────────────────────────────
 
@@ -2817,6 +2886,8 @@ function ProjectView({ projects, setProjects, player, playTrack, nav, showToast,
   const [showEdit, setShowEdit] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [fileDragOver, setFileDragOver] = useState(false);
+  const [autoTag, setAutoTag] = useState(true);
+  const [tagging, setTagging] = useState<string | null>(null);
 
   if (!project) {
     return (
@@ -2831,6 +2902,19 @@ function ProjectView({ projects, setProjects, player, playTrack, nav, showToast,
   const update = (u: Partial<Project>) =>
     setProjects(prev => prev.map(p => p.id === projectId ? { ...p, ...u } : p));
 
+  const runTagging = async (proj: Project, tracks: Track[]) => {
+    if (!tracks.length) return;
+    setTagging(`Tagging 0/${tracks.length}…`);
+    const { tagged, skipped } = await tagTracks(proj, tracks, (done, total) =>
+      setTagging(`Tagging ${done}/${total}…`));
+    setTagging(null);
+    showToast(
+      tagged
+        ? `Tagged ${tagged} file${tagged > 1 ? "s" : ""}${skipped ? ` · ${skipped} skipped` : ""}`
+        : "No files could be tagged (MP3/AAC only)"
+    );
+  };
+
   const handleAddTracks = async (files: FileList) => {
     setUploading(true);
     const newTracks: Track[] = [];
@@ -2842,10 +2926,13 @@ function ProjectView({ projects, setProjects, player, playTrack, nav, showToast,
       const name = file.name.replace(/\.[^.]+$/, "");
       newTracks.push({ id, name, audioKey, filePath, duration });
     }
-    update({ tracks: [...project.tracks, ...newTracks] });
+    const allTracks = [...project.tracks, ...newTracks];
+    update({ tracks: allTracks });
     setUploading(false);
     if (newTracks.length > 0) showToast(`${newTracks.length} track${newTracks.length > 1 ? "s" : ""} added`);
+    if (autoTag && newTracks.length > 0) await runTagging({ ...project, tracks: allTracks }, newTracks);
   };
+
 
   const handleDeleteTrack = async (track: Track) => {
     await deleteTrackFile(track);
@@ -2963,7 +3050,7 @@ function ProjectView({ projects, setProjects, player, playTrack, nav, showToast,
               {showEdit ? (
                 <EditProjectForm
                   project={project}
-                  onSave={(name, artist) => { update({ name, artist }); setShowEdit(false); }}
+                  onSave={(u) => { update(u); setShowEdit(false); }}
                   onCancel={() => setShowEdit(false)}
                 />
               ) : (
@@ -2973,7 +3060,10 @@ function ProjectView({ projects, setProjects, player, playTrack, nav, showToast,
                   <p className="text-sm text-muted-foreground/60 mb-7">
                     {project.tracks.length} track{project.tracks.length !== 1 ? "s" : ""}
                     {totalDuration > 0 && ` · ${fmt(totalDuration)}`}
+                    {project.genre && ` · ${project.genre}`}
+                    {project.discNumber ? ` · Disc ${project.discNumber}` : ""}
                   </p>
+
                   <div className="flex flex-wrap items-center gap-3">
                     <button
                       onClick={() => {
@@ -3005,18 +3095,40 @@ function ProjectView({ projects, setProjects, player, playTrack, nav, showToast,
 
       {/* Track list */}
       <div className="px-6 pb-12 max-w-5xl mx-auto">
-        <div className="flex items-center justify-between mb-4 mt-2">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4 mt-2">
           <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
             <ListMusic size={13} />
             Tracks
           </h3>
-          <label className={`flex items-center gap-2 cursor-pointer border border-border hover:border-primary/40 hover:text-primary px-4 py-2 rounded-md text-sm font-semibold transition-all ${uploading ? "opacity-60 pointer-events-none" : ""}`}>
-            <Upload size={13} />
-            {uploading ? "Adding…" : "Add Tracks"}
-            <input type="file" accept="audio/*,.mp3,.wav,.ogg,.flac,.aac,.m4a" multiple className="hidden" disabled={uploading}
-              onChange={e => e.target.files && handleAddTracks(e.target.files)} />
-          </label>
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setAutoTag(v => !v)}
+              title="Automatically write album info into files you add"
+              className={`flex items-center gap-2 px-3 py-2 rounded-md border text-xs font-semibold transition-all ${autoTag ? "border-primary/50 text-primary bg-primary/10" : "border-border text-muted-foreground hover:text-foreground"}`}
+            >
+              <Tag size={12} />
+              Auto-tag new files
+              {autoTag && <Check size={12} />}
+            </button>
+            <button
+              type="button"
+              disabled={!project.tracks.length || !!tagging}
+              onClick={() => void runTagging(project, project.tracks)}
+              className="flex items-center gap-2 px-4 py-2 rounded-md border border-border text-sm font-semibold hover:border-primary/40 hover:text-primary transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <Tag size={13} />
+              {tagging ?? "Tag All Files"}
+            </button>
+            <label className={`flex items-center gap-2 cursor-pointer border border-border hover:border-primary/40 hover:text-primary px-4 py-2 rounded-md text-sm font-semibold transition-all ${uploading ? "opacity-60 pointer-events-none" : ""}`}>
+              <Upload size={13} />
+              {uploading ? "Adding…" : "Add Tracks"}
+              <input type="file" accept="audio/*,.mp3,.wav,.ogg,.flac,.aac,.m4a" multiple className="hidden" disabled={uploading}
+                onChange={e => e.target.files && handleAddTracks(e.target.files)} />
+            </label>
+          </div>
         </div>
+
 
         {project.tracks.length === 0 ? (
           <label className="flex flex-col items-center justify-center gap-3 border-2 border-dashed border-border rounded-lg py-16 cursor-pointer hover:border-primary/40 hover:bg-card/50 transition-all group">
@@ -3338,17 +3450,31 @@ function TrackRow({
   );
 }
 
-function EditProjectForm({ project, onSave, onCancel }: { project: Project; onSave: (n: string, a: string) => void; onCancel: () => void }) {
+function EditProjectForm({ project, onSave, onCancel }: { project: Project; onSave: (u: Partial<Project>) => void; onCancel: () => void }) {
   const [name, setName] = useState(project.name);
   const [artist, setArtist] = useState(project.artist);
+  const [genre, setGenre] = useState(project.genre ?? "");
+  const [disc, setDisc] = useState(project.discNumber ? String(project.discNumber) : "");
+  const save = () => onSave({
+    name: name.trim() || project.name,
+    artist: artist.trim(),
+    genre: genre.trim() || undefined,
+    discNumber: Number(disc) > 0 ? Number(disc) : undefined,
+  });
   return (
     <div className="space-y-3">
       <input value={name} onChange={e => setName(e.target.value)} placeholder="Project name"
         className="w-full bg-secondary border border-border rounded-md px-4 py-3 text-lg font-bold outline-none focus:border-primary transition-colors" />
       <input value={artist} onChange={e => setArtist(e.target.value)} placeholder="Artist name"
         className="w-full bg-secondary border border-border rounded-md px-4 py-3 text-sm font-medium outline-none focus:border-primary transition-colors text-muted-foreground" />
+      <div className="flex gap-3">
+        <input value={genre} onChange={e => setGenre(e.target.value)} placeholder="Genre"
+          className="flex-1 bg-secondary border border-border rounded-md px-4 py-3 text-sm font-medium outline-none focus:border-primary transition-colors" />
+        <input value={disc} onChange={e => setDisc(e.target.value.replace(/\D/g, ""))} inputMode="numeric" placeholder="Disc #"
+          className="w-28 bg-secondary border border-border rounded-md px-4 py-3 text-sm font-medium outline-none focus:border-primary transition-colors" />
+      </div>
       <div className="flex items-center gap-2 pt-1">
-        <button onClick={() => onSave(name.trim() || project.name, artist.trim())} className="flex items-center gap-2 bg-primary text-white px-5 py-2 rounded-md text-sm font-semibold hover:bg-primary/85 transition-all">
+        <button onClick={save} className="flex items-center gap-2 bg-primary text-white px-5 py-2 rounded-md text-sm font-semibold hover:bg-primary/85 transition-all">
           <Check size={14} /> Save
         </button>
         <button onClick={onCancel} className="px-4 py-2 rounded-md text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors">Cancel</button>
@@ -3356,6 +3482,7 @@ function EditProjectForm({ project, onSave, onCancel }: { project: Project; onSa
     </div>
   );
 }
+
 
 // ── ShareView ──────────────────────────────────────────────────────────────
 
@@ -8050,12 +8177,19 @@ function NewItemModal({
 function AlbumForm({ onClose, onCreate }: { onClose: () => void; onCreate: (p: Project) => void }) {
   const [name, setName] = useState("");
   const [artist, setArtist] = useState("");
+  const [genre, setGenre] = useState("");
+  const [disc, setDisc] = useState("");
   const [cover, setCover] = useState<string | null>(null);
   const [isPublic, setIsPublic] = useState(true);
 
   const submit = () => {
     if (!name.trim()) return;
-    onCreate({ id: genId(), name: name.trim(), artist: artist.trim(), coverDataUrl: cover, tracks: [], createdAt: Date.now(), isPublic });
+    onCreate({
+      id: genId(), name: name.trim(), artist: artist.trim(), coverDataUrl: cover,
+      tracks: [], createdAt: Date.now(), isPublic,
+      genre: genre.trim() || undefined,
+      discNumber: Number(disc) > 0 ? Number(disc) : undefined,
+    });
   };
 
   return (
@@ -8087,10 +8221,37 @@ function AlbumForm({ onClose, onCreate }: { onClose: () => void; onCreate: (p: P
           </div>
         </div>
       </div>
+      <div className="flex gap-3 mb-5">
+        <div className="flex-1">
+          <label className="block text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1.5">Genre</label>
+          <input
+            value={genre}
+            onChange={e => setGenre(e.target.value)}
+            onKeyDown={e => { if (e.key === "Enter" && name.trim()) submit(); }}
+            placeholder="e.g. Hip-Hop"
+            className="w-full bg-secondary border border-border rounded-md px-3 py-2.5 text-sm font-medium outline-none focus:border-primary transition-colors placeholder:text-muted-foreground/50"
+          />
+        </div>
+        <div className="w-28">
+          <label className="block text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1.5">Disc #</label>
+          <input
+            value={disc}
+            onChange={e => setDisc(e.target.value.replace(/\D/g, ""))}
+            inputMode="numeric"
+            placeholder="1"
+            className="w-full bg-secondary border border-border rounded-md px-3 py-2.5 text-sm font-medium outline-none focus:border-primary transition-colors placeholder:text-muted-foreground/50"
+          />
+        </div>
+      </div>
+      <p className="text-[11px] text-muted-foreground/70 mb-4 leading-relaxed">
+        After creating it, add your files and use <span className="font-semibold text-foreground">Tag All Files</span> to write these
+        details (title, track order, cover, artist, genre) into the audio files.
+      </p>
       <div className="flex items-center justify-between mb-4">
         <span className="text-xs font-semibold text-muted-foreground">Visibility</span>
         <VisibilityToggle isPublic={isPublic} onChange={setIsPublic} />
       </div>
+
       <button
         onClick={submit}
         disabled={!name.trim()}
