@@ -220,6 +220,72 @@ async function deleteTrackFile(track: { audioKey: string; filePath?: string }): 
   try { await dbDel(track.audioKey); } catch { /* ignore */ }
 }
 
+// ── File tagging (writes real ID3 metadata into the audio files) ───────────
+
+/** Loads the album cover as raw bytes for embedding into files. */
+async function coverBytesFor(project: Project): Promise<{ mime: string; bytes: Uint8Array } | null> {
+  if (!project.coverDataUrl) return null;
+  try {
+    const res = await fetch(project.coverDataUrl);
+    const blob = await res.blob();
+    if (blob.size > 4_000_000) return null; // keep files reasonable
+    return { mime: blob.type || "image/jpeg", bytes: new Uint8Array(await blob.arrayBuffer()) };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Writes album metadata into every given track's file: the title the user
+ * typed, its position in the list, the album cover, the album artist and the
+ * album genre / disc number.
+ */
+async function tagTracks(
+  project: Project,
+  tracks: Track[],
+  onProgress?: (done: number, total: number) => void,
+): Promise<{ tagged: number; skipped: number }> {
+  const cover = await coverBytesFor(project);
+  const total = project.tracks.length;
+  let tagged = 0, skipped = 0;
+  for (let i = 0; i < tracks.length; i++) {
+    const track = tracks[i];
+    const index = project.tracks.findIndex(t => t.id === track.id);
+    const source = await loadTrackFile(track);
+    if (!source || !supportsId3(track.filePath, source.type)) { skipped++; onProgress?.(i + 1, tracks.length); continue; }
+    try {
+      const tagged Blob = null;
+    } catch { /* unreachable */ }
+    try {
+      const out = await writeId3Tags(source, {
+        title: track.name,
+        artist: project.artist,
+        albumArtist: project.artist,
+        album: project.name,
+        genre: project.genre,
+        track: (index >= 0 ? index : i) + 1,
+        trackTotal: total,
+        disc: project.discNumber,
+        year: new Date(project.createdAt).getFullYear(),
+        cover,
+      });
+      if (track.filePath) {
+        const ok = await overwriteAudioFile(track.filePath, out);
+        if (!ok) { skipped++; onProgress?.(i + 1, tracks.length); continue; }
+      } else {
+        await dbPut(track.audioKey, out);
+      }
+      tagged++;
+    } catch {
+      skipped++;
+    }
+    onProgress?.(i + 1, tracks.length);
+  }
+  return { tagged, skipped };
+}
+
+
+
 // ── Utils ──────────────────────────────────────────────────────────────────
 
 const genId = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
