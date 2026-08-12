@@ -1481,7 +1481,8 @@ export default function App() {
   const blobRef = useRef<string | null>(null);
   const playerRef = useRef(player);
   const projectsRef = useRef(projects);
-  const playTrackRef = useRef<(pid: string, idx: number, queue?: QueueItem[], queuePos?: number) => Promise<void>>(() => Promise.resolve());
+  const playTrackRef = useRef<(pid: string, idx: number, queue?: QueueItem[], queuePos?: number) => Promise<boolean>>(() => Promise.resolve(false));
+  const shufflePlayedRef = useRef<Set<number>>(new Set());
 
   useEffect(() => { playerRef.current = player; }, [player]);
   useEffect(() => { projectsRef.current = projects; }, [projects]);
