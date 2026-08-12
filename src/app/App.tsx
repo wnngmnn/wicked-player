@@ -1724,6 +1724,51 @@ export default function App() {
     }
   }, []);
 
+  const toggleShuffle = useCallback(() => {
+    shufflePlayedRef.current = new Set([playerRef.current.queuePos]);
+    setPlayer(p => ({ ...p, shuffle: !p.shuffle }));
+  }, []);
+
+  // Global keyboard shortcuts: Space = play/pause, ←/→ = prev/next,
+  // ↑/↓ = volume. Ignored while typing in a field.
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable)) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const audio = audioRef.current;
+      switch (e.key) {
+        case " ":
+        case "Spacebar":
+          e.preventDefault();
+          togglePlay();
+          break;
+        case "ArrowRight":
+          e.preventDefault();
+          void goNext();
+          break;
+        case "ArrowLeft":
+          e.preventDefault();
+          void goPrev();
+          break;
+        case "ArrowUp":
+        case "ArrowDown": {
+          if (!audio) return;
+          e.preventDefault();
+          const delta = e.key === "ArrowUp" ? 0.05 : -0.05;
+          const v = Math.min(1, Math.max(0, playerRef.current.volume + delta));
+          audio.volume = v;
+          setPlayer(p => ({ ...p, volume: v }));
+          break;
+        }
+        default:
+          break;
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [togglePlay, goNext, goPrev]);
+
   const nav = (hash: string) => {
     window.location.hash = hash;
     setSidebarTab("home");
