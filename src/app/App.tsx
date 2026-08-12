@@ -8177,12 +8177,19 @@ function NewItemModal({
 function AlbumForm({ onClose, onCreate }: { onClose: () => void; onCreate: (p: Project) => void }) {
   const [name, setName] = useState("");
   const [artist, setArtist] = useState("");
+  const [genre, setGenre] = useState("");
+  const [disc, setDisc] = useState("");
   const [cover, setCover] = useState<string | null>(null);
   const [isPublic, setIsPublic] = useState(true);
 
   const submit = () => {
     if (!name.trim()) return;
-    onCreate({ id: genId(), name: name.trim(), artist: artist.trim(), coverDataUrl: cover, tracks: [], createdAt: Date.now(), isPublic });
+    onCreate({
+      id: genId(), name: name.trim(), artist: artist.trim(), coverDataUrl: cover,
+      tracks: [], createdAt: Date.now(), isPublic,
+      genre: genre.trim() || undefined,
+      discNumber: Number(disc) > 0 ? Number(disc) : undefined,
+    });
   };
 
   return (
@@ -8214,10 +8221,37 @@ function AlbumForm({ onClose, onCreate }: { onClose: () => void; onCreate: (p: P
           </div>
         </div>
       </div>
+      <div className="flex gap-3 mb-5">
+        <div className="flex-1">
+          <label className="block text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1.5">Genre</label>
+          <input
+            value={genre}
+            onChange={e => setGenre(e.target.value)}
+            onKeyDown={e => { if (e.key === "Enter" && name.trim()) submit(); }}
+            placeholder="e.g. Hip-Hop"
+            className="w-full bg-secondary border border-border rounded-md px-3 py-2.5 text-sm font-medium outline-none focus:border-primary transition-colors placeholder:text-muted-foreground/50"
+          />
+        </div>
+        <div className="w-28">
+          <label className="block text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1.5">Disc #</label>
+          <input
+            value={disc}
+            onChange={e => setDisc(e.target.value.replace(/\D/g, ""))}
+            inputMode="numeric"
+            placeholder="1"
+            className="w-full bg-secondary border border-border rounded-md px-3 py-2.5 text-sm font-medium outline-none focus:border-primary transition-colors placeholder:text-muted-foreground/50"
+          />
+        </div>
+      </div>
+      <p className="text-[11px] text-muted-foreground/70 mb-4 leading-relaxed">
+        After creating it, add your files and use <span className="font-semibold text-foreground">Tag All Files</span> to write these
+        details (title, track order, cover, artist, genre) into the audio files.
+      </p>
       <div className="flex items-center justify-between mb-4">
         <span className="text-xs font-semibold text-muted-foreground">Visibility</span>
         <VisibilityToggle isPublic={isPublic} onChange={setIsPublic} />
       </div>
+
       <button
         onClick={submit}
         disabled={!name.trim()}
