@@ -1481,7 +1481,7 @@ export default function App() {
   const blobRef = useRef<string | null>(null);
   const playerRef = useRef(player);
   const projectsRef = useRef(projects);
-  const playTrackRef = useRef<(pid: string, idx: number, queue?: QueueItem[], queuePos?: number) => Promise<boolean>>(() => Promise.resolve(false));
+  const playTrackRef = useRef<(pid: string, idx: number, queue?: QueueItem[], queuePos?: number) , quiet?: boolean) => Promise<boolean>>(() => Promise.resolve(false));
   const shufflePlayedRef = useRef<Set<number>>(new Set());
 
   useEffect(() => { playerRef.current = player; }, [player]);
@@ -2187,7 +2187,7 @@ interface SharedProps {
   setProjects: React.Dispatch<React.SetStateAction<Project[]>>;
   player: PlayerState;
   setPlayer: React.Dispatch<React.SetStateAction<PlayerState>>;
-  playTrack: (pid: string, idx: number, queue?: QueueItem[], queuePos?: number) => Promise<void>;
+  playTrack: (pid: string, idx: number, queue?: QueueItem[], queuePos?: number) => Promise<unknown>;
   nav: (hash: string) => void;
   showToast: (msg: string) => void;
 }
@@ -3058,7 +3058,7 @@ function TrackList({
   toggleLike, isLiked, addToFront, addToBack,
 }: {
   tracks: Track[]; projectId: string;
-  player: PlayerState; playTrack: (pid: string, idx: number, queue?: QueueItem[], queuePos?: number) => Promise<void>;
+  player: PlayerState; playTrack: (pid: string, idx: number, queue?: QueueItem[], queuePos?: number) => Promise<unknown>;
   onReorder: (tracks: Track[]) => void;
   onDelete: (track: Track) => void;
   editingTrackId: string | null; editingName: string;
@@ -3627,7 +3627,7 @@ function PlaylistsView({
   setPlaylists: React.Dispatch<React.SetStateAction<Playlist[]>>;
   projects: Project[];
   player: PlayerState;
-  playTrack: (pid: string, idx: number, queue?: QueueItem[], queuePos?: number) => Promise<void>;
+  playTrack: (pid: string, idx: number, queue?: QueueItem[], queuePos?: number) => Promise<unknown>;
   setPlayer: React.Dispatch<React.SetStateAction<PlayerState>>;
   showToast: (msg: string) => void;
   sidebarOpen: boolean;
@@ -3738,7 +3738,7 @@ function buildPlaylistQueue(playlist: Playlist, projects: Project[]): QueueItem[
 function playPlaylist(
   playlist: Playlist,
   projects: Project[],
-  playTrack: (pid: string, idx: number, queue?: QueueItem[], queuePos?: number) => Promise<void>,
+  playTrack: (pid: string, idx: number, queue?: QueueItem[], queuePos?: number) => Promise<unknown>,
   setPlayer: React.Dispatch<React.SetStateAction<PlayerState>>,
   shuffle: boolean,
   startPos = 0,
@@ -3816,7 +3816,7 @@ function PlaylistDetailView({
   setPlaylists: React.Dispatch<React.SetStateAction<Playlist[]>>;
   projects: Project[];
   player: PlayerState;
-  playTrack: (pid: string, idx: number, queue?: QueueItem[], queuePos?: number) => Promise<void>;
+  playTrack: (pid: string, idx: number, queue?: QueueItem[], queuePos?: number) => Promise<unknown>;
   setPlayer: React.Dispatch<React.SetStateAction<PlayerState>>;
   showToast: (msg: string) => void;
   sidebarOpen: boolean;
@@ -4353,7 +4353,7 @@ function LikedSongsView({ likedSongs, projects, player, playTrack, toggleLike, s
   likedSongs: LikedSong[];
   projects: Project[];
   player: PlayerState;
-  playTrack: (pid: string, idx: number, queue?: QueueItem[], queuePos?: number) => Promise<void>;
+  playTrack: (pid: string, idx: number, queue?: QueueItem[], queuePos?: number) => Promise<unknown>;
   toggleLike: (projectId: string, trackId: string) => void;
   sidebarOpen: boolean;
 }) {
@@ -4458,7 +4458,7 @@ function FavoritesView({ favorites, projects, playlists, player, playTrack, togg
   projects: Project[];
   playlists: Playlist[];
   player: PlayerState;
-  playTrack: (pid: string, idx: number, queue?: QueueItem[], queuePos?: number) => Promise<void>;
+  playTrack: (pid: string, idx: number, queue?: QueueItem[], queuePos?: number) => Promise<unknown>;
   toggleFavorite: (type: "album"|"playlist", id: string) => void;
   nav: (hash: string) => void;
   setSidebarTab: (tab: SidebarTab) => void;
@@ -4563,7 +4563,7 @@ function ProfileView({ projects, playlists, likedSongs, favorites, nav, setSideb
   nav: (hash: string) => void;
   setSidebarTab: (tab: SidebarTab) => void;
   player: PlayerState;
-  playTrack: (pid: string, idx: number, queue?: QueueItem[], queuePos?: number) => Promise<void>;
+  playTrack: (pid: string, idx: number, queue?: QueueItem[], queuePos?: number) => Promise<unknown>;
 }) {
   const [name, setName] = useState(() => localStorage.getItem("melodia_profile_name") || "");
   const [editing, setEditing] = useState(false);
