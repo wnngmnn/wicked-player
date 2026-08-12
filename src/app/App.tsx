@@ -2002,13 +2002,7 @@ export default function App() {
                   nextUpPreview={nextUpPreview}
                   onDismiss={() => setNextUpPreview(false)}
                   onSkip={() => {
-                    const { queue, queuePos, shuffle } = player;
-                    if (!queue.length) return;
-                    const nextPos = shuffle ? shuffleNext(queue, queuePos) : queuePos + 1;
-                    if (nextPos < queue.length) {
-                      const item = queue[nextPos];
-                      playTrack(item.projectId, item.trackIndex, queue, nextPos);
-                    }
+                    void goNext();
                     setNextUpPreview(false);
                   }}
                 />
