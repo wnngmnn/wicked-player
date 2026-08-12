@@ -41,7 +41,11 @@ interface Project {
   createdAt: number;
   isSingle?: boolean;
   isPublic?: boolean;
+  /** Disc number of this album within a multi-disc release. */
+  discNumber?: number;
+  genre?: string;
 }
+
 
 interface QueueItem {
   projectId: string;
