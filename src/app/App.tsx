@@ -3095,18 +3095,40 @@ function ProjectView({ projects, setProjects, player, playTrack, nav, showToast,
 
       {/* Track list */}
       <div className="px-6 pb-12 max-w-5xl mx-auto">
-        <div className="flex items-center justify-between mb-4 mt-2">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4 mt-2">
           <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
             <ListMusic size={13} />
             Tracks
           </h3>
-          <label className={`flex items-center gap-2 cursor-pointer border border-border hover:border-primary/40 hover:text-primary px-4 py-2 rounded-md text-sm font-semibold transition-all ${uploading ? "opacity-60 pointer-events-none" : ""}`}>
-            <Upload size={13} />
-            {uploading ? "Adding…" : "Add Tracks"}
-            <input type="file" accept="audio/*,.mp3,.wav,.ogg,.flac,.aac,.m4a" multiple className="hidden" disabled={uploading}
-              onChange={e => e.target.files && handleAddTracks(e.target.files)} />
-          </label>
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setAutoTag(v => !v)}
+              title="Automatically write album info into files you add"
+              className={`flex items-center gap-2 px-3 py-2 rounded-md border text-xs font-semibold transition-all ${autoTag ? "border-primary/50 text-primary bg-primary/10" : "border-border text-muted-foreground hover:text-foreground"}`}
+            >
+              <Tag size={12} />
+              Auto-tag new files
+              {autoTag && <Check size={12} />}
+            </button>
+            <button
+              type="button"
+              disabled={!project.tracks.length || !!tagging}
+              onClick={() => void runTagging(project, project.tracks)}
+              className="flex items-center gap-2 px-4 py-2 rounded-md border border-border text-sm font-semibold hover:border-primary/40 hover:text-primary transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <Tag size={13} />
+              {tagging ?? "Tag All Files"}
+            </button>
+            <label className={`flex items-center gap-2 cursor-pointer border border-border hover:border-primary/40 hover:text-primary px-4 py-2 rounded-md text-sm font-semibold transition-all ${uploading ? "opacity-60 pointer-events-none" : ""}`}>
+              <Upload size={13} />
+              {uploading ? "Adding…" : "Add Tracks"}
+              <input type="file" accept="audio/*,.mp3,.wav,.ogg,.flac,.aac,.m4a" multiple className="hidden" disabled={uploading}
+                onChange={e => e.target.files && handleAddTracks(e.target.files)} />
+            </label>
+          </div>
         </div>
+
 
         {project.tracks.length === 0 ? (
           <label className="flex flex-col items-center justify-center gap-3 border-2 border-dashed border-border rounded-lg py-16 cursor-pointer hover:border-primary/40 hover:bg-card/50 transition-all group">
