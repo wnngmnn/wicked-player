@@ -7,17 +7,19 @@ import {
   Music, Shuffle, ImagePlus, Link2, ListMusic,
   Library, User, Settings, PanelLeftClose, PanelLeftOpen, Home,
   Search, GripVertical, LayoutList, Maximize2, ChevronDown, ArrowUpDown,
-  Heart, Star, Globe, Lock, Unlock, Calendar
+  Heart, Star, Globe, Lock, Unlock, Calendar, Tag
 } from "lucide-react";
 import {
   isFsSupported, pickLibraryFolder, getSavedLibraryName, getLibraryDir,
   libraryPermissionState, forgetLibraryFolder, writeAudioFile, readAudioFile,
-  deleteAudioFile,
+  deleteAudioFile, overwriteAudioFile,
 } from "./library-fs";
+import { writeId3Tags, supportsId3 } from "./id3";
 import {
   loadCollection, saveCollection, gcCovers, clearAll, storageEstimate,
   requestPersistentStorage, saveCover, releaseAllCoverUrls, type StoreKey,
 } from "./storage";
+
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
