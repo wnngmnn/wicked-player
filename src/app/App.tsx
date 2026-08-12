@@ -219,13 +219,20 @@ async function deleteTrackFile(track: { audioKey: string; filePath?: string }): 
 const genId = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
 
 // Shuffle helper — never picks the same position as current
-function shuffleNext(queue: QueueItem[], currentPos: number): number {
+function shuffleNext(queue: QueueItem[], currentPos: number, played?: Set<number>): number {
   if (queue.length <= 1) return 0;
-  let idx: number;
-  let tries = 0;
-  do { idx = Math.floor(Math.random() * queue.length); tries++; }
-  while (idx === currentPos && tries < 20);
-  return idx;
+  // Prefer positions that haven't been played yet in this shuffle cycle.
+  if (played) {
+    const pool: number[] = [];
+    for (let i = 0; i < queue.length; i++) {
+      if (i !== currentPos && !played.has(i)) pool.push(i);
+    }
+    if (pool.length) return pool[Math.floor(Math.random() * pool.length)];
+    played.clear();
+  }
+  const pool: number[] = [];
+  for (let i = 0; i < queue.length; i++) if (i !== currentPos) pool.push(i);
+  return pool[Math.floor(Math.random() * pool.length)];
 }
 
 const fmt = (s: number) => {
@@ -1474,7 +1481,8 @@ export default function App() {
   const blobRef = useRef<string | null>(null);
   const playerRef = useRef(player);
   const projectsRef = useRef(projects);
-  const playTrackRef = useRef<(pid: string, idx: number, queue?: QueueItem[], queuePos?: number) => Promise<void>>(() => Promise.resolve());
+  const playTrackRef = useRef<(pid: string, idx: number, queue?: QueueItem[], queuePos?: number, quiet?: boolean) => Promise<boolean>>(() => Promise.resolve(false));
+  const shufflePlayedRef = useRef<Set<number>>(new Set());
 
   useEffect(() => { playerRef.current = player; }, [player]);
   useEffect(() => { projectsRef.current = projects; }, [projects]);
@@ -1602,9 +1610,10 @@ export default function App() {
     trackIndex: number,
     queue?: QueueItem[],
     queuePos?: number,
-  ) => {
+    quiet?: boolean,
+  ): Promise<boolean> => {
     const proj = projectsRef.current.find(p => p.id === projectId);
-    if (!proj?.tracks[trackIndex]) return;
+    if (!proj?.tracks[trackIndex]) return false;
     const track = proj.tracks[trackIndex];
     const audio = audioRef.current!;
 
@@ -1613,10 +1622,12 @@ export default function App() {
 
     const blob = await loadTrackFile(track);
     if (!blob) {
-      showToast(isFsSupported()
-        ? "Audio file not found — reconnect your music folder in Settings"
-        : "Audio file not found");
-      return;
+      if (!quiet) {
+        showToast(isFsSupported()
+          ? "Audio file not found — reconnect your music folder in Settings"
+          : "Audio file not found");
+      }
+      return false;
     }
 
     blobRef.current = URL.createObjectURL(blob);
@@ -1633,32 +1644,66 @@ export default function App() {
         queue: queue ?? p.queue,
         queuePos: queuePos ?? p.queuePos,
       }));
+      if (queuePos !== undefined) shufflePlayedRef.current.add(queuePos);
+      return true;
     } catch (e) {
       console.error("Playback error", e);
+      return false;
     }
   }, [showToast]);
 
   useEffect(() => { playTrackRef.current = playTrack; }, [playTrack]);
+
+  // Advance to the next track. Skips tracks whose files can't be loaded so
+  // shuffle never silently stalls on a missing file.
+  const goNext = useCallback(async (auto = false) => {
+    const { queue, queuePos, shuffle } = playerRef.current;
+    if (!queue.length) return;
+    if (queue.length > 1 && shufflePlayedRef.current.size >= queue.length) {
+      shufflePlayedRef.current.clear();
+    }
+    const tried = new Set<number>([queuePos]);
+    let pos = queuePos;
+    for (let attempt = 0; attempt < queue.length; attempt++) {
+      pos = shuffle ? shuffleNext(queue, pos, shufflePlayedRef.current) : pos + 1;
+      if (!shuffle && pos >= queue.length) break;
+      if (tried.has(pos)) {
+        // pick any untried position instead of looping forever
+        const remaining = queue.map((_, i) => i).filter(i => !tried.has(i));
+        if (!remaining.length) break;
+        pos = remaining[Math.floor(Math.random() * remaining.length)];
+      }
+      tried.add(pos);
+      shufflePlayedRef.current.add(pos);
+      const item = queue[pos];
+      if (!item) continue;
+      const ok = await playTrackRef.current(item.projectId, item.trackIndex, queue, pos, true);
+      if (ok) return;
+    }
+    setPlayer(prev => ({ ...prev, isPlaying: false }));
+    if (auto) return;
+    showToast("No playable track found");
+  }, [showToast]);
+
+  const goPrev = useCallback(async () => {
+    const { queue, queuePos } = playerRef.current;
+    for (let pos = queuePos - 1; pos >= 0; pos--) {
+      const item = queue[pos];
+      if (!item) continue;
+      const ok = await playTrackRef.current(item.projectId, item.trackIndex, queue, pos, true);
+      if (ok) return;
+    }
+  }, []);
+
+  const goNextRef = useRef(goNext);
+  useEffect(() => { goNextRef.current = goNext; }, [goNext]);
 
   useEffect(() => {
     const audio = audioRef.current!;
     if (!audio) return;
     const onTime = () => setPlayer(p => ({ ...p, currentTime: audio.currentTime }));
     const onDur = () => setPlayer(p => ({ ...p, duration: isFinite(audio.duration) ? audio.duration : 0 }));
-    const onEnded = () => {
-      const p = playerRef.current;
-      const { queue, queuePos, shuffle } = p;
-      if (queue.length === 0) { setPlayer(prev => ({ ...prev, isPlaying: false })); return; }
-      const nextPos = shuffle
-        ? shuffleNext(queue, queuePos)
-        : queuePos + 1;
-      if (!shuffle && nextPos >= queue.length) {
-        setPlayer(prev => ({ ...prev, isPlaying: false }));
-        return;
-      }
-      const next = queue[nextPos];
-      playTrackRef.current(next.projectId, next.trackIndex, queue, nextPos);
-    };
+    const onEnded = () => { void goNextRef.current(true); };
     audio.addEventListener("timeupdate", onTime);
     audio.addEventListener("durationchange", onDur);
     audio.addEventListener("ended", onEnded);
@@ -1678,6 +1723,51 @@ export default function App() {
       audio.play().then(() => setPlayer(p => ({ ...p, isPlaying: true }))).catch(console.error);
     }
   }, []);
+
+  const toggleShuffle = useCallback(() => {
+    shufflePlayedRef.current = new Set([playerRef.current.queuePos]);
+    setPlayer(p => ({ ...p, shuffle: !p.shuffle }));
+  }, []);
+
+  // Global keyboard shortcuts: Space = play/pause, ←/→ = prev/next,
+  // ↑/↓ = volume. Ignored while typing in a field.
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable)) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const audio = audioRef.current;
+      switch (e.key) {
+        case " ":
+        case "Spacebar":
+          e.preventDefault();
+          togglePlay();
+          break;
+        case "ArrowRight":
+          e.preventDefault();
+          void goNext();
+          break;
+        case "ArrowLeft":
+          e.preventDefault();
+          void goPrev();
+          break;
+        case "ArrowUp":
+        case "ArrowDown": {
+          if (!audio) return;
+          e.preventDefault();
+          const delta = e.key === "ArrowUp" ? 0.05 : -0.05;
+          const v = Math.min(1, Math.max(0, playerRef.current.volume + delta));
+          audio.volume = v;
+          setPlayer(p => ({ ...p, volume: v }));
+          break;
+        }
+        default:
+          break;
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [togglePlay, goNext, goPrev]);
 
   const nav = (hash: string) => {
     window.location.hash = hash;
@@ -1957,13 +2047,7 @@ export default function App() {
                   nextUpPreview={nextUpPreview}
                   onDismiss={() => setNextUpPreview(false)}
                   onSkip={() => {
-                    const { queue, queuePos, shuffle } = player;
-                    if (!queue.length) return;
-                    const nextPos = shuffle ? shuffleNext(queue, queuePos) : queuePos + 1;
-                    if (nextPos < queue.length) {
-                      const item = queue[nextPos];
-                      playTrack(item.projectId, item.trackIndex, queue, nextPos);
-                    }
+                    void goNext();
                     setNextUpPreview(false);
                   }}
                 />
@@ -1979,25 +2063,9 @@ export default function App() {
               onTogglePlay={togglePlay}
               onSeek={t => { audioRef.current!.currentTime = t; setPlayer(p => ({ ...p, currentTime: t })); }}
               onVolume={v => { if (audioRef.current) audioRef.current.volume = v; setPlayer(p => ({ ...p, volume: v })); }}
-              onPrev={() => {
-                const prevPos = player.queuePos - 1;
-                if (prevPos >= 0) {
-                  const item = player.queue[prevPos];
-                  if (item) playTrack(item.projectId, item.trackIndex, player.queue, prevPos);
-                }
-              }}
-              onNext={() => {
-                const { queue, queuePos, shuffle } = player;
-                if (!queue.length) return;
-                const nextPos = shuffle
-                  ? shuffleNext(queue, queuePos)
-                  : queuePos + 1;
-                if (nextPos < queue.length) {
-                  const item = queue[nextPos];
-                  playTrack(item.projectId, item.trackIndex, queue, nextPos);
-                }
-              }}
-              onShuffle={() => setPlayer(p => ({ ...p, shuffle: !p.shuffle }))}
+              onPrev={() => { void goPrev(); }}
+              onNext={() => { void goNext(); }}
+              onShuffle={toggleShuffle}
               onExpand={() => setIsFullscreen(true)}
               onToggleNextUp={() => setShowNextUp(v => !v)}
               showNextUp={showNextUp}
@@ -2023,25 +2091,9 @@ export default function App() {
                   onTogglePlay={togglePlay}
                   onSeek={t => { audioRef.current!.currentTime = t; setPlayer(p => ({ ...p, currentTime: t })); }}
                   onVolume={v => { if (audioRef.current) audioRef.current.volume = v; setPlayer(p => ({ ...p, volume: v })); }}
-                  onPrev={() => {
-                    const prevPos = player.queuePos - 1;
-                    if (prevPos >= 0) {
-                      const item = player.queue[prevPos];
-                      if (item) playTrack(item.projectId, item.trackIndex, player.queue, prevPos);
-                    }
-                  }}
-                  onNext={() => {
-                    const { queue, queuePos, shuffle } = player;
-                    if (!queue.length) return;
-                    const nextPos = shuffle
-                      ? shuffleNext(queue, queuePos)
-                      : queuePos + 1;
-                    if (nextPos < queue.length) {
-                      const item = queue[nextPos];
-                      playTrack(item.projectId, item.trackIndex, queue, nextPos);
-                    }
-                  }}
-                  onShuffle={() => setPlayer(p => ({ ...p, shuffle: !p.shuffle }))}
+                  onPrev={() => { void goPrev(); }}
+                  onNext={() => { void goNext(); }}
+                  onShuffle={toggleShuffle}
                   onClose={() => setIsFullscreen(false)}
                   toggleLike={toggleLike}
                   isLiked={isLiked}
@@ -2142,7 +2194,7 @@ interface SharedProps {
   setProjects: React.Dispatch<React.SetStateAction<Project[]>>;
   player: PlayerState;
   setPlayer: React.Dispatch<React.SetStateAction<PlayerState>>;
-  playTrack: (pid: string, idx: number, queue?: QueueItem[], queuePos?: number) => Promise<void>;
+  playTrack: (pid: string, idx: number, queue?: QueueItem[], queuePos?: number) => Promise<unknown>;
   nav: (hash: string) => void;
   showToast: (msg: string) => void;
 }
@@ -3013,7 +3065,7 @@ function TrackList({
   toggleLike, isLiked, addToFront, addToBack,
 }: {
   tracks: Track[]; projectId: string;
-  player: PlayerState; playTrack: (pid: string, idx: number, queue?: QueueItem[], queuePos?: number) => Promise<void>;
+  player: PlayerState; playTrack: (pid: string, idx: number, queue?: QueueItem[], queuePos?: number) => Promise<unknown>;
   onReorder: (tracks: Track[]) => void;
   onDelete: (track: Track) => void;
   editingTrackId: string | null; editingName: string;
@@ -3582,7 +3634,7 @@ function PlaylistsView({
   setPlaylists: React.Dispatch<React.SetStateAction<Playlist[]>>;
   projects: Project[];
   player: PlayerState;
-  playTrack: (pid: string, idx: number, queue?: QueueItem[], queuePos?: number) => Promise<void>;
+  playTrack: (pid: string, idx: number, queue?: QueueItem[], queuePos?: number) => Promise<unknown>;
   setPlayer: React.Dispatch<React.SetStateAction<PlayerState>>;
   showToast: (msg: string) => void;
   sidebarOpen: boolean;
@@ -3693,7 +3745,7 @@ function buildPlaylistQueue(playlist: Playlist, projects: Project[]): QueueItem[
 function playPlaylist(
   playlist: Playlist,
   projects: Project[],
-  playTrack: (pid: string, idx: number, queue?: QueueItem[], queuePos?: number) => Promise<void>,
+  playTrack: (pid: string, idx: number, queue?: QueueItem[], queuePos?: number) => Promise<unknown>,
   setPlayer: React.Dispatch<React.SetStateAction<PlayerState>>,
   shuffle: boolean,
   startPos = 0,
@@ -3771,7 +3823,7 @@ function PlaylistDetailView({
   setPlaylists: React.Dispatch<React.SetStateAction<Playlist[]>>;
   projects: Project[];
   player: PlayerState;
-  playTrack: (pid: string, idx: number, queue?: QueueItem[], queuePos?: number) => Promise<void>;
+  playTrack: (pid: string, idx: number, queue?: QueueItem[], queuePos?: number) => Promise<unknown>;
   setPlayer: React.Dispatch<React.SetStateAction<PlayerState>>;
   showToast: (msg: string) => void;
   sidebarOpen: boolean;
@@ -4308,7 +4360,7 @@ function LikedSongsView({ likedSongs, projects, player, playTrack, toggleLike, s
   likedSongs: LikedSong[];
   projects: Project[];
   player: PlayerState;
-  playTrack: (pid: string, idx: number, queue?: QueueItem[], queuePos?: number) => Promise<void>;
+  playTrack: (pid: string, idx: number, queue?: QueueItem[], queuePos?: number) => Promise<unknown>;
   toggleLike: (projectId: string, trackId: string) => void;
   sidebarOpen: boolean;
 }) {
@@ -4413,7 +4465,7 @@ function FavoritesView({ favorites, projects, playlists, player, playTrack, togg
   projects: Project[];
   playlists: Playlist[];
   player: PlayerState;
-  playTrack: (pid: string, idx: number, queue?: QueueItem[], queuePos?: number) => Promise<void>;
+  playTrack: (pid: string, idx: number, queue?: QueueItem[], queuePos?: number) => Promise<unknown>;
   toggleFavorite: (type: "album"|"playlist", id: string) => void;
   nav: (hash: string) => void;
   setSidebarTab: (tab: SidebarTab) => void;
@@ -4518,7 +4570,7 @@ function ProfileView({ projects, playlists, likedSongs, favorites, nav, setSideb
   nav: (hash: string) => void;
   setSidebarTab: (tab: SidebarTab) => void;
   player: PlayerState;
-  playTrack: (pid: string, idx: number, queue?: QueueItem[], queuePos?: number) => Promise<void>;
+  playTrack: (pid: string, idx: number, queue?: QueueItem[], queuePos?: number) => Promise<unknown>;
 }) {
   const [name, setName] = useState(() => localStorage.getItem("melodia_profile_name") || "");
   const [editing, setEditing] = useState(false);
