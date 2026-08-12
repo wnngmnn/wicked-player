@@ -3050,7 +3050,7 @@ function ProjectView({ projects, setProjects, player, playTrack, nav, showToast,
               {showEdit ? (
                 <EditProjectForm
                   project={project}
-                  onSave={(name, artist) => { update({ name, artist }); setShowEdit(false); }}
+                  onSave={(u) => { update(u); setShowEdit(false); }}
                   onCancel={() => setShowEdit(false)}
                 />
               ) : (
@@ -3060,7 +3060,10 @@ function ProjectView({ projects, setProjects, player, playTrack, nav, showToast,
                   <p className="text-sm text-muted-foreground/60 mb-7">
                     {project.tracks.length} track{project.tracks.length !== 1 ? "s" : ""}
                     {totalDuration > 0 && ` · ${fmt(totalDuration)}`}
+                    {project.genre && ` · ${project.genre}`}
+                    {project.discNumber ? ` · Disc ${project.discNumber}` : ""}
                   </p>
+
                   <div className="flex flex-wrap items-center gap-3">
                     <button
                       onClick={() => {
