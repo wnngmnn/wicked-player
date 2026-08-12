@@ -2046,25 +2046,9 @@ export default function App() {
                   onTogglePlay={togglePlay}
                   onSeek={t => { audioRef.current!.currentTime = t; setPlayer(p => ({ ...p, currentTime: t })); }}
                   onVolume={v => { if (audioRef.current) audioRef.current.volume = v; setPlayer(p => ({ ...p, volume: v })); }}
-                  onPrev={() => {
-                    const prevPos = player.queuePos - 1;
-                    if (prevPos >= 0) {
-                      const item = player.queue[prevPos];
-                      if (item) playTrack(item.projectId, item.trackIndex, player.queue, prevPos);
-                    }
-                  }}
-                  onNext={() => {
-                    const { queue, queuePos, shuffle } = player;
-                    if (!queue.length) return;
-                    const nextPos = shuffle
-                      ? shuffleNext(queue, queuePos)
-                      : queuePos + 1;
-                    if (nextPos < queue.length) {
-                      const item = queue[nextPos];
-                      playTrack(item.projectId, item.trackIndex, queue, nextPos);
-                    }
-                  }}
-                  onShuffle={() => setPlayer(p => ({ ...p, shuffle: !p.shuffle }))}
+                  onPrev={() => { void goPrev(); }}
+                  onNext={() => { void goNext(); }}
+                  onShuffle={toggleShuffle}
                   onClose={() => setIsFullscreen(false)}
                   toggleLike={toggleLike}
                   isLiked={isLiked}
