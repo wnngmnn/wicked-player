@@ -219,13 +219,20 @@ async function deleteTrackFile(track: { audioKey: string; filePath?: string }): 
 const genId = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
 
 // Shuffle helper — never picks the same position as current
-function shuffleNext(queue: QueueItem[], currentPos: number): number {
+function shuffleNext(queue: QueueItem[], currentPos: number, played?: Set<number>): number {
   if (queue.length <= 1) return 0;
-  let idx: number;
-  let tries = 0;
-  do { idx = Math.floor(Math.random() * queue.length); tries++; }
-  while (idx === currentPos && tries < 20);
-  return idx;
+  // Prefer positions that haven't been played yet in this shuffle cycle.
+  if (played) {
+    const pool: number[] = [];
+    for (let i = 0; i < queue.length; i++) {
+      if (i !== currentPos && !played.has(i)) pool.push(i);
+    }
+    if (pool.length) return pool[Math.floor(Math.random() * pool.length)];
+    played.clear();
+  }
+  const pool: number[] = [];
+  for (let i = 0; i < queue.length; i++) if (i !== currentPos) pool.push(i);
+  return pool[Math.floor(Math.random() * pool.length)];
 }
 
 const fmt = (s: number) => {
