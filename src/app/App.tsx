@@ -1610,9 +1610,10 @@ export default function App() {
     trackIndex: number,
     queue?: QueueItem[],
     queuePos?: number,
-  ) => {
+    quiet?: boolean,
+  ): Promise<boolean> => {
     const proj = projectsRef.current.find(p => p.id === projectId);
-    if (!proj?.tracks[trackIndex]) return;
+    if (!proj?.tracks[trackIndex]) return false;
     const track = proj.tracks[trackIndex];
     const audio = audioRef.current!;
 
@@ -1621,10 +1622,12 @@ export default function App() {
 
     const blob = await loadTrackFile(track);
     if (!blob) {
-      showToast(isFsSupported()
-        ? "Audio file not found — reconnect your music folder in Settings"
-        : "Audio file not found");
-      return;
+      if (!quiet) {
+        showToast(isFsSupported()
+          ? "Audio file not found — reconnect your music folder in Settings"
+          : "Audio file not found");
+      }
+      return false;
     }
 
     blobRef.current = URL.createObjectURL(blob);
@@ -1641,32 +1644,66 @@ export default function App() {
         queue: queue ?? p.queue,
         queuePos: queuePos ?? p.queuePos,
       }));
+      if (queuePos !== undefined) shufflePlayedRef.current.add(queuePos);
+      return true;
     } catch (e) {
       console.error("Playback error", e);
+      return false;
     }
   }, [showToast]);
 
   useEffect(() => { playTrackRef.current = playTrack; }, [playTrack]);
+
+  // Advance to the next track. Skips tracks whose files can't be loaded so
+  // shuffle never silently stalls on a missing file.
+  const goNext = useCallback(async (auto = false) => {
+    const { queue, queuePos, shuffle } = playerRef.current;
+    if (!queue.length) return;
+    if (queue.length > 1 && shufflePlayedRef.current.size >= queue.length) {
+      shufflePlayedRef.current.clear();
+    }
+    const tried = new Set<number>([queuePos]);
+    let pos = queuePos;
+    for (let attempt = 0; attempt < queue.length; attempt++) {
+      pos = shuffle ? shuffleNext(queue, pos, shufflePlayedRef.current) : pos + 1;
+      if (!shuffle && pos >= queue.length) break;
+      if (tried.has(pos)) {
+        // pick any untried position instead of looping forever
+        const remaining = queue.map((_, i) => i).filter(i => !tried.has(i));
+        if (!remaining.length) break;
+        pos = remaining[Math.floor(Math.random() * remaining.length)];
+      }
+      tried.add(pos);
+      shufflePlayedRef.current.add(pos);
+      const item = queue[pos];
+      if (!item) continue;
+      const ok = await playTrackRef.current(item.projectId, item.trackIndex, queue, pos, true);
+      if (ok) return;
+    }
+    setPlayer(prev => ({ ...prev, isPlaying: false }));
+    if (auto) return;
+    showToast("No playable track found");
+  }, [showToast]);
+
+  const goPrev = useCallback(async () => {
+    const { queue, queuePos } = playerRef.current;
+    for (let pos = queuePos - 1; pos >= 0; pos--) {
+      const item = queue[pos];
+      if (!item) continue;
+      const ok = await playTrackRef.current(item.projectId, item.trackIndex, queue, pos, true);
+      if (ok) return;
+    }
+  }, []);
+
+  const goNextRef = useRef(goNext);
+  useEffect(() => { goNextRef.current = goNext; }, [goNext]);
 
   useEffect(() => {
     const audio = audioRef.current!;
     if (!audio) return;
     const onTime = () => setPlayer(p => ({ ...p, currentTime: audio.currentTime }));
     const onDur = () => setPlayer(p => ({ ...p, duration: isFinite(audio.duration) ? audio.duration : 0 }));
-    const onEnded = () => {
-      const p = playerRef.current;
-      const { queue, queuePos, shuffle } = p;
-      if (queue.length === 0) { setPlayer(prev => ({ ...prev, isPlaying: false })); return; }
-      const nextPos = shuffle
-        ? shuffleNext(queue, queuePos)
-        : queuePos + 1;
-      if (!shuffle && nextPos >= queue.length) {
-        setPlayer(prev => ({ ...prev, isPlaying: false }));
-        return;
-      }
-      const next = queue[nextPos];
-      playTrackRef.current(next.projectId, next.trackIndex, queue, nextPos);
-    };
+    const onEnded = () => { void goNextRef.current(true); };
     audio.addEventListener("timeupdate", onTime);
     audio.addEventListener("durationchange", onDur);
     audio.addEventListener("ended", onEnded);
