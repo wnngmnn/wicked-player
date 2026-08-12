@@ -3450,17 +3450,31 @@ function TrackRow({
   );
 }
 
-function EditProjectForm({ project, onSave, onCancel }: { project: Project; onSave: (n: string, a: string) => void; onCancel: () => void }) {
+function EditProjectForm({ project, onSave, onCancel }: { project: Project; onSave: (u: Partial<Project>) => void; onCancel: () => void }) {
   const [name, setName] = useState(project.name);
   const [artist, setArtist] = useState(project.artist);
+  const [genre, setGenre] = useState(project.genre ?? "");
+  const [disc, setDisc] = useState(project.discNumber ? String(project.discNumber) : "");
+  const save = () => onSave({
+    name: name.trim() || project.name,
+    artist: artist.trim(),
+    genre: genre.trim() || undefined,
+    discNumber: Number(disc) > 0 ? Number(disc) : undefined,
+  });
   return (
     <div className="space-y-3">
       <input value={name} onChange={e => setName(e.target.value)} placeholder="Project name"
         className="w-full bg-secondary border border-border rounded-md px-4 py-3 text-lg font-bold outline-none focus:border-primary transition-colors" />
       <input value={artist} onChange={e => setArtist(e.target.value)} placeholder="Artist name"
         className="w-full bg-secondary border border-border rounded-md px-4 py-3 text-sm font-medium outline-none focus:border-primary transition-colors text-muted-foreground" />
+      <div className="flex gap-3">
+        <input value={genre} onChange={e => setGenre(e.target.value)} placeholder="Genre"
+          className="flex-1 bg-secondary border border-border rounded-md px-4 py-3 text-sm font-medium outline-none focus:border-primary transition-colors" />
+        <input value={disc} onChange={e => setDisc(e.target.value.replace(/\D/g, ""))} inputMode="numeric" placeholder="Disc #"
+          className="w-28 bg-secondary border border-border rounded-md px-4 py-3 text-sm font-medium outline-none focus:border-primary transition-colors" />
+      </div>
       <div className="flex items-center gap-2 pt-1">
-        <button onClick={() => onSave(name.trim() || project.name, artist.trim())} className="flex items-center gap-2 bg-primary text-white px-5 py-2 rounded-md text-sm font-semibold hover:bg-primary/85 transition-all">
+        <button onClick={save} className="flex items-center gap-2 bg-primary text-white px-5 py-2 rounded-md text-sm font-semibold hover:bg-primary/85 transition-all">
           <Check size={14} /> Save
         </button>
         <button onClick={onCancel} className="px-4 py-2 rounded-md text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors">Cancel</button>
@@ -3468,6 +3482,7 @@ function EditProjectForm({ project, onSave, onCancel }: { project: Project; onSa
     </div>
   );
 }
+
 
 // ── ShareView ──────────────────────────────────────────────────────────────
 
