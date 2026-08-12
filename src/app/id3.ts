@@ -57,14 +57,13 @@ function textFrame(id: string, value: string): Uint8Array {
 
 function apicFrame(mime: string, bytes: Uint8Array): Uint8Array {
   const mimeBytes = latin1(mime);
-  const body = new Uint8Array(1 + mimeBytes.length + 1 + 1 + 2 + bytes.length);
+  const body = new Uint8Array(1 + mimeBytes.length + 1 + 1 + 1 + bytes.length);
   let o = 0;
   body[o++] = 0x00;                    // ISO-8859-1 description
   body.set(mimeBytes, o); o += mimeBytes.length;
   body[o++] = 0x00;                    // mime terminator
   body[o++] = 0x03;                    // picture type: front cover
   body[o++] = 0x00;                    // empty description
-  body[o++] = 0x00;                    // (unused padding byte kept for clarity)
   body.set(bytes, o);
   return frame("APIC", body.subarray(0, o + bytes.length));
 }
@@ -113,7 +112,7 @@ export async function writeId3Tags(source: Blob, tags: Id3Tags): Promise<Blob> {
   header[3] = 0x03; header[4] = 0x00; header[5] = 0x00;
   header.set(syncsafe(framesSize + padding), 6);
 
-  const parts: BlobPart[] = [header, ...frames, new Uint8Array(padding), raw.subarray(start)];
+  const parts = [header, ...frames, new Uint8Array(padding), raw.subarray(start)] as unknown as BlobPart[];
   return new Blob(parts, { type: source.type || "audio/mpeg" });
 }
 
