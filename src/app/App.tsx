@@ -254,9 +254,6 @@ async function tagTracks(
     const source = await loadTrackFile(track);
     if (!source || !supportsId3(track.filePath, source.type)) { skipped++; onProgress?.(i + 1, tracks.length); continue; }
     try {
-      const tagged Blob = null;
-    } catch { /* unreachable */ }
-    try {
       const out = await writeId3Tags(source, {
         title: track.name,
         artist: project.artist,
