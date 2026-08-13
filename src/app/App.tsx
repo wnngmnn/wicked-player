@@ -9,6 +9,9 @@ import {
   Search, GripVertical, LayoutList, Maximize2, ChevronDown, ArrowUpDown,
   Heart, Star, Globe, Lock, Unlock, Calendar, Tag
 } from "lucide-react";
+import StatsPanel from "./StatsPanel";
+import { recordListen, recordPlay, flushStats } from "./stats";
+
 import {
   isFsSupported, pickLibraryFolder, getSavedLibraryName, getLibraryDir,
   libraryPermissionState, forgetLibraryFolder, writeAudioFile, readAudioFile,
@@ -336,6 +339,8 @@ function flushPersists() {
     saveCollection(key, list).catch(() => { /* tab is going away */ });
   }
   pendingWrites.clear();
+  flushStats();
+
 }
 
 if (typeof window !== "undefined") {
@@ -1847,6 +1852,42 @@ export default function App() {
     ? projects.find(p => p.id === player.projectId) ?? null
     : null;
   const currentTrack = currentProject?.tracks[player.trackIndex] ?? null;
+
+  // ── Listening stats ──────────────────────────────────────────────────────
+  // Time is accumulated once per second while audio is actually playing; a
+  // "play" is counted after 20s (or half the track, whichever is shorter).
+  const statsMetaRef = useRef<{ projectId: string; trackId: string; title: string; artist: string; album: string } | null>(null);
+  const statsSessionRef = useRef<{ key: string; ms: number; counted: boolean }>({ key: "", ms: 0, counted: false });
+
+  useEffect(() => {
+    if (!currentTrack || !currentProject) { statsMetaRef.current = null; return; }
+    statsMetaRef.current = {
+      projectId: currentProject.id,
+      trackId: currentTrack.id,
+      title: currentTrack.name,
+      artist: currentProject.artist || "Unknown Artist",
+      album: currentProject.name,
+    };
+    const key = `${currentProject.id}:${currentTrack.id}`;
+    if (statsSessionRef.current.key !== key) statsSessionRef.current = { key, ms: 0, counted: false };
+  }, [currentProject, currentTrack]);
+
+  useEffect(() => {
+    if (!player.isPlaying) return;
+    const id = setInterval(() => {
+      const meta = statsMetaRef.current;
+      const audio = audioRef.current;
+      if (!meta || !audio || audio.paused) return;
+      recordListen(meta, 1000);
+      const s = statsSessionRef.current;
+      s.ms += 1000;
+      const dur = isFinite(audio.duration) ? audio.duration : 0;
+      const threshold = dur > 0 ? Math.min(20_000, dur * 500) : 20_000;
+      if (!s.counted && s.ms >= threshold) { s.counted = true; recordPlay(meta); }
+    }, 1000);
+    return () => clearInterval(id);
+  }, [player.isPlaying]);
+
 
   const shared = { projects, setProjects, player, setPlayer, playTrack, nav, showToast };
 
@@ -4782,7 +4823,11 @@ function ProfileView({ projects, playlists, likedSongs, favorites, nav, setSideb
           </button>
         </div>
 
+        {/* Listening stats */}
+        <StatsPanel projects={projects} />
+
         {/* Public Albums */}
+
         {publicAlbums.length > 0 && (
           <section className="mb-10">
             <div className="flex items-center gap-2 mb-5">
