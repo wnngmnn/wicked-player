@@ -339,6 +339,8 @@ function flushPersists() {
     saveCollection(key, list).catch(() => { /* tab is going away */ });
   }
   pendingWrites.clear();
+  flushStats();
+
 }
 
 if (typeof window !== "undefined") {
