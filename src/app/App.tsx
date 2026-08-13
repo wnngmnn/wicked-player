@@ -4823,7 +4823,11 @@ function ProfileView({ projects, playlists, likedSongs, favorites, nav, setSideb
           </button>
         </div>
 
+        {/* Listening stats */}
+        <StatsPanel projects={projects} />
+
         {/* Public Albums */}
+
         {publicAlbums.length > 0 && (
           <section className="mb-10">
             <div className="flex items-center gap-2 mb-5">
