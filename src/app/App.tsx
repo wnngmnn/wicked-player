@@ -1853,6 +1853,42 @@ export default function App() {
     : null;
   const currentTrack = currentProject?.tracks[player.trackIndex] ?? null;
 
+  // ── Listening stats ──────────────────────────────────────────────────────
+  // Time is accumulated once per second while audio is actually playing; a
+  // "play" is counted after 20s (or half the track, whichever is shorter).
+  const statsMetaRef = useRef<{ projectId: string; trackId: string; title: string; artist: string; album: string } | null>(null);
+  const statsSessionRef = useRef<{ key: string; ms: number; counted: boolean }>({ key: "", ms: 0, counted: false });
+
+  useEffect(() => {
+    if (!currentTrack || !currentProject) { statsMetaRef.current = null; return; }
+    statsMetaRef.current = {
+      projectId: currentProject.id,
+      trackId: currentTrack.id,
+      title: currentTrack.name,
+      artist: currentProject.artist || "Unknown Artist",
+      album: currentProject.name,
+    };
+    const key = `${currentProject.id}:${currentTrack.id}`;
+    if (statsSessionRef.current.key !== key) statsSessionRef.current = { key, ms: 0, counted: false };
+  }, [currentProject, currentTrack]);
+
+  useEffect(() => {
+    if (!player.isPlaying) return;
+    const id = setInterval(() => {
+      const meta = statsMetaRef.current;
+      const audio = audioRef.current;
+      if (!meta || !audio || audio.paused) return;
+      recordListen(meta, 1000);
+      const s = statsSessionRef.current;
+      s.ms += 1000;
+      const dur = isFinite(audio.duration) ? audio.duration : 0;
+      const threshold = dur > 0 ? Math.min(20_000, dur * 500) : 20_000;
+      if (!s.counted && s.ms >= threshold) { s.counted = true; recordPlay(meta); }
+    }, 1000);
+    return () => clearInterval(id);
+  }, [player.isPlaying]);
+
+
   const shared = { projects, setProjects, player, setPlayer, playTrack, nav, showToast };
 
   const gradientBg = theme.gradient.enabled
