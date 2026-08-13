@@ -9,6 +9,9 @@ import {
   Search, GripVertical, LayoutList, Maximize2, ChevronDown, ArrowUpDown,
   Heart, Star, Globe, Lock, Unlock, Calendar, Tag
 } from "lucide-react";
+import StatsPanel from "./StatsPanel";
+import { recordListen, recordPlay, flushStats } from "./stats";
+
 import {
   isFsSupported, pickLibraryFolder, getSavedLibraryName, getLibraryDir,
   libraryPermissionState, forgetLibraryFolder, writeAudioFile, readAudioFile,
