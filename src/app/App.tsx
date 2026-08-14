@@ -47,6 +47,8 @@ interface Project {
   /** Disc number of this album within a multi-disc release. */
   discNumber?: number;
   genre?: string;
+  /** Release year written into file tags. */
+  year?: number;
 }
 
 
@@ -266,7 +268,7 @@ async function tagTracks(
         track: (index >= 0 ? index : i) + 1,
         trackTotal: total,
         disc: project.discNumber,
-        year: new Date(project.createdAt).getFullYear(),
+        year: project.year || new Date(project.createdAt).getFullYear(),
         cover,
       });
       if (track.filePath) {
@@ -1581,8 +1583,10 @@ export default function App() {
       try {
         const ctx = new AudioContext();
         const analyser = ctx.createAnalyser();
-        analyser.fftSize = 512;
-        analyser.smoothingTimeConstant = 0.8;
+        analyser.fftSize = 1024;              // finer bass resolution for 808s
+        analyser.smoothingTimeConstant = 0.62; // snappier response to hits
+        analyser.minDecibels = -78;
+        analyser.maxDecibels = -18;            // more headroom => taller motion
         const src = ctx.createMediaElementSource(audio);
         src.connect(analyser);
         analyser.connect(ctx.destination);
@@ -3103,6 +3107,7 @@ function ProjectView({ projects, setProjects, player, playTrack, nav, showToast,
                     {totalDuration > 0 && ` · ${fmt(totalDuration)}`}
                     {project.genre && ` · ${project.genre}`}
                     {project.discNumber ? ` · Disc ${project.discNumber}` : ""}
+                    {project.year ? ` · ${project.year}` : ""}
                   </p>
 
                   <div className="flex flex-wrap items-center gap-3">
@@ -3229,77 +3234,201 @@ function TrackList({
   addToFront?: (pid: string, tidx: number) => void;
   addToBack?: (pid: string, tidx: number) => void;
 }) {
-  const dragIdx = useRef<number | null>(null);
-  const [overIdx, setOverIdx] = useState<number | null>(null);
-  const [locked, setLocked] = useState(true);
+  const [reordering, setReordering] = useState(false);
 
   // Project queue: all tracks in this project
   const projectQueue = tracks.map((_, i) => ({ projectId, trackIndex: i }));
-
-  const onDragStart = (idx: number) => { if (locked) return; dragIdx.current = idx; };
-  const onDragOver = (e: React.DragEvent, idx: number) => { if (locked) return; e.preventDefault(); setOverIdx(idx); };
-  const onDrop = (e: React.DragEvent, idx: number) => {
-    if (locked) return;
-    e.preventDefault();
-    if (dragIdx.current === null || dragIdx.current === idx) { dragIdx.current = null; setOverIdx(null); return; }
-    const reordered = [...tracks];
-    const [moved] = reordered.splice(dragIdx.current, 1);
-    reordered.splice(idx, 0, moved);
-    onReorder(reordered);
-    dragIdx.current = null;
-    setOverIdx(null);
-  };
-  const onDragEnd = () => { dragIdx.current = null; setOverIdx(null); };
 
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-end">
         <button
-          onClick={() => setLocked(v => !v)}
+          onClick={() => setReordering(v => !v)}
           className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-semibold border transition-all active:scale-95 ${
-            locked
-              ? "border-border text-muted-foreground hover:text-foreground hover:border-primary/40"
-              : "border-primary/50 text-primary bg-primary/10 hover:bg-primary/15"
+            reordering
+              ? "border-primary/50 text-primary bg-primary/10 hover:bg-primary/15"
+              : "border-border text-muted-foreground hover:text-foreground hover:border-primary/40"
           }`}
-          title={locked ? "Unlock to reorder tracks" : "Lock reordering"}
+          title={reordering ? "Finish reordering" : "Reorder tracks"}
         >
-          {locked ? <Lock size={11} /> : <Unlock size={11} />}
-          {locked ? "Reorder locked" : "Reorder unlocked"}
+          {reordering ? <Unlock size={11} /> : <Lock size={11} />}
+          {reordering ? "Reordering — tap to finish" : "Reorder tracks"}
         </button>
       </div>
-      <div className={`rounded-lg border transition-colors ${locked ? "border-border" : "border-primary/40 ring-1 ring-primary/10"}`}>
-        {tracks.map((track, idx) => (
-          <TrackRow
-            key={track.id}
-            track={track}
-            index={idx}
-            isActive={player.projectId === projectId && player.trackIndex === idx}
-            isPlaying={player.projectId === projectId && player.trackIndex === idx && player.isPlaying}
-            isLast={idx === tracks.length - 1}
-            isDragOver={overIdx === idx}
-            reorderUnlocked={!locked}
-            onPlay={() => playTrack(projectId, idx, projectQueue, idx)}
-            onDelete={() => onDelete(track)}
-            isEditing={editingTrackId === track.id}
-            editingName={editingName}
-            onStartEdit={() => onStartEdit(track)}
-            onEditName={onEditName}
-            onSaveEdit={() => onSaveEdit(track)}
-            onCancelEdit={onCancelEdit}
-            onDragStart={() => onDragStart(idx)}
-            onDragOver={e => onDragOver(e, idx)}
-            onDrop={e => onDrop(e, idx)}
-            onDragEnd={onDragEnd}
-            liked={isLiked ? isLiked(projectId, track.id) : undefined}
-            onToggleLike={toggleLike ? () => toggleLike(projectId, track.id) : undefined}
-            onAddToFront={addToFront ? () => addToFront(projectId, idx) : undefined}
-            onAddToBack={addToBack ? () => addToBack(projectId, idx) : undefined}
-          />
-        ))}
+
+      {reordering ? (
+        <ReorderPanel tracks={tracks} onReorder={onReorder} onDone={() => setReordering(false)} />
+      ) : (
+        <div className="rounded-lg border border-border">
+          {tracks.map((track, idx) => (
+            <TrackRow
+              key={track.id}
+              track={track}
+              index={idx}
+              isActive={player.projectId === projectId && player.trackIndex === idx}
+              isPlaying={player.projectId === projectId && player.trackIndex === idx && player.isPlaying}
+              isLast={idx === tracks.length - 1}
+              isDragOver={false}
+              onPlay={() => playTrack(projectId, idx, projectQueue, idx)}
+              onDelete={() => onDelete(track)}
+              isEditing={editingTrackId === track.id}
+              editingName={editingName}
+              onStartEdit={() => onStartEdit(track)}
+              onEditName={onEditName}
+              onSaveEdit={() => onSaveEdit(track)}
+              onCancelEdit={onCancelEdit}
+              liked={isLiked ? isLiked(projectId, track.id) : undefined}
+              onToggleLike={toggleLike ? () => toggleLike(projectId, track.id) : undefined}
+              onAddToFront={addToFront ? () => addToFront(projectId, idx) : undefined}
+              onAddToBack={addToBack ? () => addToBack(projectId, idx) : undefined}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── ReorderPanel — dedicated, scrollable drag-to-reorder surface ───────────
+
+function ReorderPanel({ tracks, onReorder, onDone }: {
+  tracks: Track[];
+  onReorder: (tracks: Track[]) => void;
+  onDone: () => void;
+}) {
+  const [dragId, setDragId] = useState<string | null>(null);
+  /** Insertion slot: 0..tracks.length (the gap the dragged track will land in). */
+  const [slot, setSlot] = useState<number | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const autoScroll = useRef<number>(0);
+
+  const dragIdx = dragId ? tracks.findIndex(t => t.id === dragId) : -1;
+  /** Final track number the dragged item would get (1-based). */
+  const targetNo = slot === null ? null : (dragIdx > -1 && slot > dragIdx ? slot : slot + 1);
+
+  const move = (from: number, to: number) => {
+    if (to < 0 || to >= tracks.length || from === to) return;
+    const next = [...tracks];
+    const [m] = next.splice(from, 1);
+    next.splice(to, 0, m);
+    onReorder(next);
+  };
+
+  const commit = () => {
+    if (dragIdx > -1 && slot !== null) {
+      const to = slot > dragIdx ? slot - 1 : slot;
+      move(dragIdx, to);
+    }
+    setDragId(null);
+    setSlot(null);
+    stopScroll();
+  };
+
+  const stopScroll = () => {
+    if (autoScroll.current) { cancelAnimationFrame(autoScroll.current); autoScroll.current = 0; }
+  };
+
+  // Auto-scroll the list when dragging near its top/bottom edge
+  const edgeScroll = (clientY: number) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const zone = 56;
+    let dy = 0;
+    if (clientY < rect.top + zone) dy = -Math.ceil((rect.top + zone - clientY) / 6);
+    else if (clientY > rect.bottom - zone) dy = Math.ceil((clientY - (rect.bottom - zone)) / 6);
+    stopScroll();
+    if (!dy) return;
+    const step = () => {
+      el.scrollTop += dy;
+      autoScroll.current = requestAnimationFrame(step);
+    };
+    autoScroll.current = requestAnimationFrame(step);
+  };
+
+  useEffect(() => stopScroll, []);
+
+  const rowDragOver = (e: React.DragEvent, idx: number) => {
+    e.preventDefault();
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const after = e.clientY > rect.top + rect.height / 2;
+    setSlot(after ? idx + 1 : idx);
+    edgeScroll(e.clientY);
+  };
+
+  return (
+    <div className="rounded-xl border border-primary/40 bg-card/60 ring-1 ring-primary/10 overflow-hidden">
+      <div className="flex items-center justify-between gap-3 px-3 py-2 border-b border-border bg-secondary/50">
+        <div className="flex items-center gap-2 min-w-0">
+          <ArrowUpDown size={12} className="text-primary shrink-0" />
+          <p className="text-[11px] font-semibold text-muted-foreground truncate">
+            Drag a track, or use the arrows. {tracks.length} track{tracks.length === 1 ? "" : "s"}
+          </p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {targetNo !== null && (
+            <span className="px-2 py-1 rounded-md bg-primary/15 text-primary text-[11px] font-bold tabular-nums">
+              → #{targetNo}
+            </span>
+          )}
+          <button onClick={onDone}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-primary text-primary-foreground text-[11px] font-bold transition-all active:scale-95">
+            <Check size={11} /> Done
+          </button>
+        </div>
+      </div>
+
+      <div
+        ref={scrollRef}
+        onDragLeave={stopScroll}
+        className="max-h-[430px] overflow-y-auto overscroll-contain"
+        style={{ contain: "content" }}
+      >
+        {tracks.map((track, idx) => {
+          const isDragged = dragId === track.id;
+          return (
+            <div key={track.id} className="relative">
+              {slot === idx && <div className="absolute -top-px left-0 right-0 h-0.5 bg-primary z-10 rounded-full" />}
+              <div
+                draggable
+                onDragStart={e => { setDragId(track.id); setSlot(idx); e.dataTransfer.effectAllowed = "move"; }}
+                onDragOver={e => rowDragOver(e, idx)}
+                onDrop={e => { e.preventDefault(); commit(); }}
+                onDragEnd={commit}
+                className={`flex items-center gap-3 px-3 py-2.5 border-b border-border/60 select-none cursor-grab active:cursor-grabbing transition-[opacity,background-color,transform] duration-150 ${
+                  isDragged ? "opacity-40 bg-primary/5 scale-[0.99]" : "hover:bg-secondary/60"
+                }`}
+              >
+                <GripVertical size={15} className="text-primary/70 shrink-0" />
+                <span className="w-8 shrink-0 text-center text-sm font-extrabold tabular-nums text-muted-foreground">
+                  {idx + 1}
+                </span>
+                <p className="flex-1 min-w-0 text-sm font-semibold truncate">{track.name}</p>
+                <span className="text-[11px] text-muted-foreground tabular-nums shrink-0">{fmt(track.duration)}</span>
+                <div className="flex items-center gap-0.5 shrink-0">
+                  <button onClick={() => move(idx, idx - 1)} disabled={idx === 0}
+                    className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground hover:text-foreground disabled:opacity-25 transition-colors"
+                    title="Move up" aria-label="Move up">
+                    <ChevronDown size={14} className="rotate-180" />
+                  </button>
+                  <button onClick={() => move(idx, idx + 1)} disabled={idx === tracks.length - 1}
+                    className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground hover:text-foreground disabled:opacity-25 transition-colors"
+                    title="Move down" aria-label="Move down">
+                    <ChevronDown size={14} />
+                  </button>
+                </div>
+              </div>
+              {idx === tracks.length - 1 && slot === tracks.length && (
+                <div className="absolute -bottom-px left-0 right-0 h-0.5 bg-primary z-10 rounded-full" />
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
 }
+
 
 function QueueDropdown({ onAddToFront, onAddToBack }: {
   onAddToFront?: () => void; onAddToBack?: () => void; isLast?: boolean;
@@ -3496,11 +3625,13 @@ function EditProjectForm({ project, onSave, onCancel }: { project: Project; onSa
   const [artist, setArtist] = useState(project.artist);
   const [genre, setGenre] = useState(project.genre ?? "");
   const [disc, setDisc] = useState(project.discNumber ? String(project.discNumber) : "");
+  const [year, setYear] = useState(project.year ? String(project.year) : "");
   const save = () => onSave({
     name: name.trim() || project.name,
     artist: artist.trim(),
     genre: genre.trim() || undefined,
     discNumber: Number(disc) > 0 ? Number(disc) : undefined,
+    year: Number(year) > 0 ? Number(year) : undefined,
   });
   return (
     <div className="space-y-3">
@@ -3512,7 +3643,9 @@ function EditProjectForm({ project, onSave, onCancel }: { project: Project; onSa
         <input value={genre} onChange={e => setGenre(e.target.value)} placeholder="Genre"
           className="flex-1 bg-secondary border border-border rounded-md px-4 py-3 text-sm font-medium outline-none focus:border-primary transition-colors" />
         <input value={disc} onChange={e => setDisc(e.target.value.replace(/\D/g, ""))} inputMode="numeric" placeholder="Disc #"
-          className="w-28 bg-secondary border border-border rounded-md px-4 py-3 text-sm font-medium outline-none focus:border-primary transition-colors" />
+          className="w-24 bg-secondary border border-border rounded-md px-4 py-3 text-sm font-medium outline-none focus:border-primary transition-colors" />
+        <input value={year} onChange={e => setYear(e.target.value.replace(/\D/g, "").slice(0, 4))} inputMode="numeric" placeholder="Year"
+          className="w-24 bg-secondary border border-border rounded-md px-4 py-3 text-sm font-medium outline-none focus:border-primary transition-colors" />
       </div>
       <div className="flex items-center gap-2 pt-1">
         <button onClick={save} className="flex items-center gap-2 bg-primary text-white px-5 py-2 rounded-md text-sm font-semibold hover:bg-primary/85 transition-all">
@@ -4935,14 +5068,17 @@ function AudioVisualizer({ analyserRef, config, isPlaying, layoutTheme, accent }
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext("2d");
+    const ctx = canvas.getContext("2d", { alpha: true });
     if (!ctx) return;
 
-    // Resize canvas to match container
+    // Resize canvas to match container (cap DPR for performance)
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+    let W = 0, H = 0;
     const resize = () => {
-      canvas.width = canvas.offsetWidth * devicePixelRatio;
-      canvas.height = canvas.offsetHeight * devicePixelRatio;
-      ctx.scale(devicePixelRatio, devicePixelRatio);
+      W = canvas.offsetWidth; H = canvas.offsetHeight;
+      canvas.width = Math.max(1, Math.round(W * dpr));
+      canvas.height = Math.max(1, Math.round(H * dpr));
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
     resize();
     const ro = new ResizeObserver(resize);
@@ -4957,106 +5093,181 @@ function AudioVisualizer({ analyserRef, config, isPlaying, layoutTheme, accent }
       ? ({ default:"bars", modern:"circular", classic:"waveform", unique:"dots" }[layoutTheme] ?? "bars") as VisualizerConfig["style"]
       : config.style;
 
+    // Reusable buffers + smoothing state (allocated once, not per frame)
+    let freqData: Uint8Array<ArrayBuffer> | null = null;
+    let timeData: Uint8Array<ArrayBuffer> | null = null;
+    const BAR_COUNT = 64;
+    const DOT_COLS = 28, DOT_ROWS = 12;
+    const WAVE_POINTS = 88;
+
+    const bars = new Float32Array(BAR_COUNT);
+    const barPeaks = new Float32Array(BAR_COUNT);
+    const cols = new Float32Array(DOT_COLS);      // dot column heights (0-1)
+    const colVel = new Float32Array(DOT_COLS);    // bouncy velocity
+    const colPeak = new Float32Array(DOT_COLS);
+    const wave = new Float32Array(WAVE_POINTS);
+    const ring = new Float32Array(96);
+    let bassEnv = 0, punch = 0;
+
+    /** Energy of a frequency slice, 0-1. */
+    const band = (data: Uint8Array, from: number, to: number) => {
+      let sum = 0, n = 0;
+      for (let i = from; i < to && i < data.length; i++) { sum += data[i]; n++; }
+      return n ? sum / n / 255 : 0;
+    };
+
     const draw = () => {
       rafRef.current = requestAnimationFrame(draw);
       const analyser = analyserRef.current;
-      const W = canvas.offsetWidth, H = canvas.offsetHeight;
 
       ctx.clearRect(0, 0, W, H);
 
       if (!analyser || !isPlaying) {
-        // Draw idle state: flat line or empty
         if (effectiveStyle === "waveform") {
           ctx.beginPath();
           ctx.strokeStyle = `rgba(${accentRgb},0.2)`;
-          ctx.lineWidth = 1.5;
+          ctx.lineWidth = 2;
           ctx.moveTo(0, H/2); ctx.lineTo(W, H/2);
           ctx.stroke();
         }
         return;
       }
 
-      // Resume AudioContext if suspended
-      if (analyser.context.state === "suspended") (analyser.context as AudioContext).resume();
+      if (analyser.context.state === "suspended") void (analyser.context as AudioContext).resume();
 
       const bufLen = analyser.frequencyBinCount;
-      const freqData = new Uint8Array(bufLen);
-      const timeData = new Uint8Array(bufLen);
+      if (!freqData || freqData.length !== bufLen) {
+        freqData = new Uint8Array(new ArrayBuffer(bufLen));
+        timeData = new Uint8Array(new ArrayBuffer(bufLen));
+      }
       analyser.getByteFrequencyData(freqData);
-      analyser.getByteTimeDomainData(timeData);
+      analyser.getByteTimeDomainData(timeData!);
 
-      const intensityMul = config.intensity / 100;
+      // Loudness + bass/808 detection drives all styles
+      const gain = 0.85 + (config.intensity / 100) * 2.15;   // much livelier response
+      const sub = band(freqData, 1, 5);                       // 808 / sub bass
+      const bass = band(freqData, 1, 12);
+      const target = Math.max(sub * 1.25, bass);
+      bassEnv += (target - bassEnv) * (target > bassEnv ? 0.55 : 0.09);
+      const hit = Math.max(0, target - bassEnv * 0.92);
+      punch = Math.max(punch * 0.88, hit * 2.2);              // transient kick, decays fast
+
+      /** Perceptual boost so quiet mixes still move a lot. */
+      const shape = (v: number) => Math.min(1, Math.pow(v, 0.62) * gain);
 
       if (effectiveStyle === "bars") {
-        const barCount = Math.min(64, bufLen);
-        const barW = W / barCount;
-        for (let i = 0; i < barCount; i++) {
-          const v = (freqData[i] / 255) * H * intensityMul;
-          const hue = 360 * (i / barCount);
-          const grad = ctx.createLinearGradient(0, H, 0, H - v);
-          grad.addColorStop(0, `rgba(${accentRgb},0.8)`);
-          grad.addColorStop(1, `rgba(${accentRgb},0.2)`);
+        const barW = W / BAR_COUNT;
+        for (let i = 0; i < BAR_COUNT; i++) {
+          // log-ish spread so bass gets its own bars and highs are grouped
+          const t = i / BAR_COUNT;
+          const lo = Math.floor(Math.pow(t, 1.7) * bufLen);
+          const hi = Math.max(lo + 1, Math.floor(Math.pow((i + 1) / BAR_COUNT, 1.7) * bufLen));
+          const v = shape(band(freqData, lo, hi)) * (1 + punch * (1 - t) * 0.6);
+          const level = Math.min(1, v);
+          bars[i] += (level - bars[i]) * (level > bars[i] ? 0.6 : 0.16);
+          barPeaks[i] = Math.max(barPeaks[i] - 0.012, bars[i]);
+          const h = Math.max(2, bars[i] * H * 0.98);
+          const grad = ctx.createLinearGradient(0, H, 0, H - h);
+          grad.addColorStop(0, `rgba(${accentRgb},${0.55 + bars[i] * 0.45})`);
+          grad.addColorStop(1, `rgba(${accentRgb},0.18)`);
           ctx.fillStyle = grad;
-          ctx.fillRect(i * barW + 1, H - v, barW - 2, v);
+          ctx.fillRect(i * barW + 1, H - h, Math.max(1, barW - 2), h);
+          // peak cap
+          const py = H - Math.max(2, barPeaks[i] * H * 0.98);
+          ctx.fillStyle = `rgba(${accentRgb},0.55)`;
+          ctx.fillRect(i * barW + 1, py, Math.max(1, barW - 2), 2);
         }
       } else if (effectiveStyle === "waveform") {
-        ctx.beginPath();
-        ctx.lineWidth = 2;
-        const grad = ctx.createLinearGradient(0, 0, W, 0);
-        grad.addColorStop(0, `rgba(${accentRgb},0.1)`);
-        grad.addColorStop(0.5, `rgba(${accentRgb},0.9)`);
-        grad.addColorStop(1, `rgba(${accentRgb},0.1)`);
-        ctx.strokeStyle = grad;
-        const step = W / bufLen;
-        for (let i = 0; i < bufLen; i++) {
-          const v = ((timeData[i] / 128) - 1) * (H / 2) * intensityMul;
-          const x = i * step;
-          const y = H / 2 + v;
-          i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        // Downsample + average into fixed points, then smooth across frames:
+        // keeps the line alive but removes the jittery, glitchy look.
+        const chunk = Math.floor(bufLen / WAVE_POINTS) || 1;
+        const amp = (H / 2) * (0.42 + (config.intensity / 100) * 0.72);
+        for (let i = 0; i < WAVE_POINTS; i++) {
+          let sum = 0;
+          const start = i * chunk;
+          for (let j = 0; j < chunk; j++) sum += (timeData![start + j] ?? 128) / 128 - 1;
+          const v = (sum / chunk) * (1 + punch * 0.5);
+          wave[i] += (v - wave[i]) * 0.28;                    // temporal smoothing
         }
+        const step = W / (WAVE_POINTS - 1);
+        const grad = ctx.createLinearGradient(0, 0, W, 0);
+        grad.addColorStop(0, `rgba(${accentRgb},0.15)`);
+        grad.addColorStop(0.5, `rgba(${accentRgb},0.95)`);
+        grad.addColorStop(1, `rgba(${accentRgb},0.15)`);
+        ctx.strokeStyle = grad;
+        ctx.lineWidth = 2.5;
+        ctx.lineJoin = "round";
+        ctx.lineCap = "round";
+        ctx.beginPath();
+        // Smooth curve through midpoints for a flowing line
+        const px = (i: number) => i * step;
+        const py = (i: number) => H / 2 + wave[i] * amp;
+        ctx.moveTo(px(0), py(0));
+        for (let i = 1; i < WAVE_POINTS - 1; i++) {
+          const cx = (px(i) + px(i + 1)) / 2;
+          const cy = (py(i) + py(i + 1)) / 2;
+          ctx.quadraticCurveTo(px(i), py(i), cx, cy);
+        }
+        ctx.lineTo(px(WAVE_POINTS - 1), py(WAVE_POINTS - 1));
         ctx.stroke();
-        // Glow
-        ctx.shadowBlur = 8;
-        ctx.shadowColor = `rgba(${accentRgb},0.5)`;
+        ctx.shadowBlur = 10 + punch * 14;
+        ctx.shadowColor = `rgba(${accentRgb},0.45)`;
         ctx.stroke();
         ctx.shadowBlur = 0;
       } else if (effectiveStyle === "circular") {
         const cx = W / 2, cy = H / 2;
-        const radius = Math.min(W, H) * 0.3;
-        const bars = Math.min(80, bufLen);
-        for (let i = 0; i < bars; i++) {
-          const angle = (i / bars) * Math.PI * 2 - Math.PI / 2;
-          const v = (freqData[i] / 255) * radius * 0.6 * intensityMul;
-          const x1 = cx + Math.cos(angle) * radius;
-          const y1 = cy + Math.sin(angle) * radius;
-          const x2 = cx + Math.cos(angle) * (radius + v);
-          const y2 = cy + Math.sin(angle) * (radius + v);
+        const radius = Math.min(W, H) * 0.3 * (1 + punch * 0.06);
+        const count = ring.length;
+        for (let i = 0; i < count; i++) {
+          const t = i / count;
+          const lo = Math.floor(Math.pow(t, 1.6) * bufLen);
+          const hi = Math.max(lo + 1, Math.floor(Math.pow((i + 1) / count, 1.6) * bufLen));
+          const level = Math.min(1, shape(band(freqData, lo, hi)) * (1 + punch * 0.5));
+          ring[i] += (level - ring[i]) * (level > ring[i] ? 0.55 : 0.15);
+          const angle = t * Math.PI * 2 - Math.PI / 2;
+          const v = ring[i] * radius * 1.15;
+          const cosA = Math.cos(angle), sinA = Math.sin(angle);
           ctx.beginPath();
-          ctx.strokeStyle = `rgba(${accentRgb},${0.4 + (freqData[i]/255)*0.6})`;
-          ctx.lineWidth = 2;
-          ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
+          ctx.strokeStyle = `rgba(${accentRgb},${0.35 + ring[i] * 0.65})`;
+          ctx.lineWidth = 2.5;
+          ctx.lineCap = "round";
+          ctx.moveTo(cx + cosA * radius, cy + sinA * radius);
+          ctx.lineTo(cx + cosA * (radius + v), cy + sinA * (radius + v));
           ctx.stroke();
         }
-        // Center circle
         ctx.beginPath();
-        ctx.arc(cx, cy, radius - 4, 0, Math.PI * 2);
-        ctx.strokeStyle = `rgba(${accentRgb},0.15)`;
+        ctx.arc(cx, cy, Math.max(1, radius - 4), 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(${accentRgb},${0.12 + punch * 0.25})`;
         ctx.lineWidth = 1;
         ctx.stroke();
       } else if (effectiveStyle === "dots") {
-        const cols = 20, rows = 6;
-        const cellW = W / cols, cellH = H / rows;
-        for (let col = 0; col < cols; col++) {
-          const freqIdx = Math.floor((col / cols) * bufLen);
-          const val = (freqData[freqIdx] / 255) * intensityMul;
-          const activeDots = Math.floor(val * rows);
-          for (let row = 0; row < rows; row++) {
+        const cellW = W / DOT_COLS, cellH = H / DOT_ROWS;
+        const radius = Math.min(cellW, cellH) * 0.26;
+        for (let col = 0; col < DOT_COLS; col++) {
+          const t = col / DOT_COLS;
+          const lo = Math.floor(Math.pow(t, 1.7) * bufLen);
+          const hi = Math.max(lo + 1, Math.floor(Math.pow((col + 1) / DOT_COLS, 1.7) * bufLen));
+          const level = Math.min(1, shape(band(freqData, lo, hi)) * (1 + punch * (1 - t) * 0.8));
+          // spring physics => real bounce instead of a flat ramp
+          colVel[col] += (level - cols[col]) * 0.42;
+          colVel[col] *= 0.76;
+          cols[col] = Math.max(0, Math.min(1.12, cols[col] + colVel[col]));
+          colPeak[col] = Math.max(colPeak[col] - 0.02, cols[col]);
+
+          const lit = cols[col] * DOT_ROWS;
+          const peakRow = Math.min(DOT_ROWS - 1, Math.floor(colPeak[col] * DOT_ROWS));
+          for (let row = 0; row < DOT_ROWS; row++) {
             const x = col * cellW + cellW / 2;
             const y = H - row * cellH - cellH / 2;
-            const active = row < activeDots;
-            const alpha = active ? 0.2 + val * 0.8 : 0.05;
+            const on = row < Math.floor(lit);
+            const partial = row === Math.floor(lit) ? lit - Math.floor(lit) : 0;
+            let alpha = 0.05;
+            let rad = radius;
+            if (on) { alpha = 0.35 + cols[col] * 0.6; rad = radius * (1 + cols[col] * 0.25); }
+            else if (partial > 0) { alpha = 0.08 + partial * 0.6; rad = radius * (0.7 + partial * 0.4); }
+            if (row === peakRow && colPeak[col] > 0.05) alpha = Math.max(alpha, 0.85);
             ctx.beginPath();
-            ctx.arc(x, y, Math.min(cellW, cellH) * 0.28, 0, Math.PI * 2);
+            ctx.arc(x, y, rad, 0, Math.PI * 2);
             ctx.fillStyle = `rgba(${accentRgb},${alpha})`;
             ctx.fill();
           }
@@ -5067,6 +5278,7 @@ function AudioVisualizer({ analyserRef, config, isPlaying, layoutTheme, accent }
     draw();
     return () => { cancelAnimationFrame(rafRef.current); ro.disconnect(); };
   }, [isPlaying, config.style, config.intensity, accent, layoutTheme]);
+
 
   return (
     <canvas
@@ -8224,6 +8436,7 @@ function AlbumForm({ onClose, onCreate }: { onClose: () => void; onCreate: (p: P
   const [artist, setArtist] = useState("");
   const [genre, setGenre] = useState("");
   const [disc, setDisc] = useState("");
+  const [year, setYear] = useState(String(new Date().getFullYear()));
   const [cover, setCover] = useState<string | null>(null);
   const [isPublic, setIsPublic] = useState(true);
 
@@ -8234,6 +8447,7 @@ function AlbumForm({ onClose, onCreate }: { onClose: () => void; onCreate: (p: P
       tracks: [], createdAt: Date.now(), isPublic,
       genre: genre.trim() || undefined,
       discNumber: Number(disc) > 0 ? Number(disc) : undefined,
+      year: Number(year) > 0 ? Number(year) : undefined,
     });
   };
 
@@ -8277,7 +8491,7 @@ function AlbumForm({ onClose, onCreate }: { onClose: () => void; onCreate: (p: P
             className="w-full bg-secondary border border-border rounded-md px-3 py-2.5 text-sm font-medium outline-none focus:border-primary transition-colors placeholder:text-muted-foreground/50"
           />
         </div>
-        <div className="w-28">
+        <div className="w-24">
           <label className="block text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1.5">Disc #</label>
           <input
             value={disc}
@@ -8287,10 +8501,21 @@ function AlbumForm({ onClose, onCreate }: { onClose: () => void; onCreate: (p: P
             className="w-full bg-secondary border border-border rounded-md px-3 py-2.5 text-sm font-medium outline-none focus:border-primary transition-colors placeholder:text-muted-foreground/50"
           />
         </div>
+        <div className="w-24">
+          <label className="block text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1.5">Year</label>
+          <input
+            value={year}
+            onChange={e => setYear(e.target.value.replace(/\D/g, "").slice(0, 4))}
+            onKeyDown={e => { if (e.key === "Enter" && name.trim()) submit(); }}
+            inputMode="numeric"
+            placeholder="2026"
+            className="w-full bg-secondary border border-border rounded-md px-3 py-2.5 text-sm font-medium outline-none focus:border-primary transition-colors placeholder:text-muted-foreground/50"
+          />
+        </div>
       </div>
       <p className="text-[11px] text-muted-foreground/70 mb-4 leading-relaxed">
         After creating it, add your files and use <span className="font-semibold text-foreground">Tag All Files</span> to write these
-        details (title, track order, cover, artist, genre) into the audio files.
+        details (title, track order, cover, artist, genre, year) into the audio files.
       </p>
       <div className="flex items-center justify-between mb-4">
         <span className="text-xs font-semibold text-muted-foreground">Visibility</span>
