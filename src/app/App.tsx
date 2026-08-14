@@ -4961,8 +4961,8 @@ function AudioVisualizer({ analyserRef, config, isPlaying, layoutTheme, accent }
       : config.style;
 
     // Reusable buffers + smoothing state (allocated once, not per frame)
-    let freqData: Uint8Array | null = null;
-    let timeData: Uint8Array | null = null;
+    let freqData: Uint8Array<ArrayBuffer> | null = null;
+    let timeData: Uint8Array<ArrayBuffer> | null = null;
     const BAR_COUNT = 64;
     const DOT_COLS = 28, DOT_ROWS = 12;
     const WAVE_POINTS = 88;
