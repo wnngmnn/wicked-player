@@ -47,6 +47,8 @@ interface Project {
   /** Disc number of this album within a multi-disc release. */
   discNumber?: number;
   genre?: string;
+  /** Release year written into file tags. */
+  year?: number;
 }
 
 
@@ -266,7 +268,7 @@ async function tagTracks(
         track: (index >= 0 ? index : i) + 1,
         trackTotal: total,
         disc: project.discNumber,
-        year: new Date(project.createdAt).getFullYear(),
+        year: project.year || new Date(project.createdAt).getFullYear(),
         cover,
       });
       if (track.filePath) {
@@ -3105,6 +3107,7 @@ function ProjectView({ projects, setProjects, player, playTrack, nav, showToast,
                     {totalDuration > 0 && ` · ${fmt(totalDuration)}`}
                     {project.genre && ` · ${project.genre}`}
                     {project.discNumber ? ` · Disc ${project.discNumber}` : ""}
+                    {project.year ? ` · ${project.year}` : ""}
                   </p>
 
                   <div className="flex flex-wrap items-center gap-3">
@@ -3498,11 +3501,13 @@ function EditProjectForm({ project, onSave, onCancel }: { project: Project; onSa
   const [artist, setArtist] = useState(project.artist);
   const [genre, setGenre] = useState(project.genre ?? "");
   const [disc, setDisc] = useState(project.discNumber ? String(project.discNumber) : "");
+  const [year, setYear] = useState(project.year ? String(project.year) : "");
   const save = () => onSave({
     name: name.trim() || project.name,
     artist: artist.trim(),
     genre: genre.trim() || undefined,
     discNumber: Number(disc) > 0 ? Number(disc) : undefined,
+    year: Number(year) > 0 ? Number(year) : undefined,
   });
   return (
     <div className="space-y-3">
@@ -3514,7 +3519,9 @@ function EditProjectForm({ project, onSave, onCancel }: { project: Project; onSa
         <input value={genre} onChange={e => setGenre(e.target.value)} placeholder="Genre"
           className="flex-1 bg-secondary border border-border rounded-md px-4 py-3 text-sm font-medium outline-none focus:border-primary transition-colors" />
         <input value={disc} onChange={e => setDisc(e.target.value.replace(/\D/g, ""))} inputMode="numeric" placeholder="Disc #"
-          className="w-28 bg-secondary border border-border rounded-md px-4 py-3 text-sm font-medium outline-none focus:border-primary transition-colors" />
+          className="w-24 bg-secondary border border-border rounded-md px-4 py-3 text-sm font-medium outline-none focus:border-primary transition-colors" />
+        <input value={year} onChange={e => setYear(e.target.value.replace(/\D/g, "").slice(0, 4))} inputMode="numeric" placeholder="Year"
+          className="w-24 bg-secondary border border-border rounded-md px-4 py-3 text-sm font-medium outline-none focus:border-primary transition-colors" />
       </div>
       <div className="flex items-center gap-2 pt-1">
         <button onClick={save} className="flex items-center gap-2 bg-primary text-white px-5 py-2 rounded-md text-sm font-semibold hover:bg-primary/85 transition-all">
@@ -8305,6 +8312,7 @@ function AlbumForm({ onClose, onCreate }: { onClose: () => void; onCreate: (p: P
   const [artist, setArtist] = useState("");
   const [genre, setGenre] = useState("");
   const [disc, setDisc] = useState("");
+  const [year, setYear] = useState(String(new Date().getFullYear()));
   const [cover, setCover] = useState<string | null>(null);
   const [isPublic, setIsPublic] = useState(true);
 
@@ -8315,6 +8323,7 @@ function AlbumForm({ onClose, onCreate }: { onClose: () => void; onCreate: (p: P
       tracks: [], createdAt: Date.now(), isPublic,
       genre: genre.trim() || undefined,
       discNumber: Number(disc) > 0 ? Number(disc) : undefined,
+      year: Number(year) > 0 ? Number(year) : undefined,
     });
   };
 
@@ -8358,7 +8367,7 @@ function AlbumForm({ onClose, onCreate }: { onClose: () => void; onCreate: (p: P
             className="w-full bg-secondary border border-border rounded-md px-3 py-2.5 text-sm font-medium outline-none focus:border-primary transition-colors placeholder:text-muted-foreground/50"
           />
         </div>
-        <div className="w-28">
+        <div className="w-24">
           <label className="block text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1.5">Disc #</label>
           <input
             value={disc}
@@ -8368,10 +8377,21 @@ function AlbumForm({ onClose, onCreate }: { onClose: () => void; onCreate: (p: P
             className="w-full bg-secondary border border-border rounded-md px-3 py-2.5 text-sm font-medium outline-none focus:border-primary transition-colors placeholder:text-muted-foreground/50"
           />
         </div>
+        <div className="w-24">
+          <label className="block text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1.5">Year</label>
+          <input
+            value={year}
+            onChange={e => setYear(e.target.value.replace(/\D/g, "").slice(0, 4))}
+            onKeyDown={e => { if (e.key === "Enter" && name.trim()) submit(); }}
+            inputMode="numeric"
+            placeholder="2026"
+            className="w-full bg-secondary border border-border rounded-md px-3 py-2.5 text-sm font-medium outline-none focus:border-primary transition-colors placeholder:text-muted-foreground/50"
+          />
+        </div>
       </div>
       <p className="text-[11px] text-muted-foreground/70 mb-4 leading-relaxed">
         After creating it, add your files and use <span className="font-semibold text-foreground">Tag All Files</span> to write these
-        details (title, track order, cover, artist, genre) into the audio files.
+        details (title, track order, cover, artist, genre, year) into the audio files.
       </p>
       <div className="flex items-center justify-between mb-4">
         <span className="text-xs font-semibold text-muted-foreground">Visibility</span>
