@@ -1581,8 +1581,10 @@ export default function App() {
       try {
         const ctx = new AudioContext();
         const analyser = ctx.createAnalyser();
-        analyser.fftSize = 512;
-        analyser.smoothingTimeConstant = 0.8;
+        analyser.fftSize = 1024;              // finer bass resolution for 808s
+        analyser.smoothingTimeConstant = 0.62; // snappier response to hits
+        analyser.minDecibels = -78;
+        analyser.maxDecibels = -18;            // more headroom => taller motion
         const src = ctx.createMediaElementSource(audio);
         src.connect(analyser);
         analyser.connect(ctx.destination);
