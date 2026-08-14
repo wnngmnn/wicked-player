@@ -5004,8 +5004,8 @@ function AudioVisualizer({ analyserRef, config, isPlaying, layoutTheme, accent }
 
       const bufLen = analyser.frequencyBinCount;
       if (!freqData || freqData.length !== bufLen) {
-        freqData = new Uint8Array(bufLen);
-        timeData = new Uint8Array(bufLen);
+        freqData = new Uint8Array(new ArrayBuffer(bufLen));
+        timeData = new Uint8Array(new ArrayBuffer(bufLen));
       }
       analyser.getByteFrequencyData(freqData);
       analyser.getByteTimeDomainData(timeData!);
