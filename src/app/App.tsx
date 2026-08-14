@@ -3234,77 +3234,201 @@ function TrackList({
   addToFront?: (pid: string, tidx: number) => void;
   addToBack?: (pid: string, tidx: number) => void;
 }) {
-  const dragIdx = useRef<number | null>(null);
-  const [overIdx, setOverIdx] = useState<number | null>(null);
-  const [locked, setLocked] = useState(true);
+  const [reordering, setReordering] = useState(false);
 
   // Project queue: all tracks in this project
   const projectQueue = tracks.map((_, i) => ({ projectId, trackIndex: i }));
-
-  const onDragStart = (idx: number) => { if (locked) return; dragIdx.current = idx; };
-  const onDragOver = (e: React.DragEvent, idx: number) => { if (locked) return; e.preventDefault(); setOverIdx(idx); };
-  const onDrop = (e: React.DragEvent, idx: number) => {
-    if (locked) return;
-    e.preventDefault();
-    if (dragIdx.current === null || dragIdx.current === idx) { dragIdx.current = null; setOverIdx(null); return; }
-    const reordered = [...tracks];
-    const [moved] = reordered.splice(dragIdx.current, 1);
-    reordered.splice(idx, 0, moved);
-    onReorder(reordered);
-    dragIdx.current = null;
-    setOverIdx(null);
-  };
-  const onDragEnd = () => { dragIdx.current = null; setOverIdx(null); };
 
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-end">
         <button
-          onClick={() => setLocked(v => !v)}
+          onClick={() => setReordering(v => !v)}
           className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-semibold border transition-all active:scale-95 ${
-            locked
-              ? "border-border text-muted-foreground hover:text-foreground hover:border-primary/40"
-              : "border-primary/50 text-primary bg-primary/10 hover:bg-primary/15"
+            reordering
+              ? "border-primary/50 text-primary bg-primary/10 hover:bg-primary/15"
+              : "border-border text-muted-foreground hover:text-foreground hover:border-primary/40"
           }`}
-          title={locked ? "Unlock to reorder tracks" : "Lock reordering"}
+          title={reordering ? "Finish reordering" : "Reorder tracks"}
         >
-          {locked ? <Lock size={11} /> : <Unlock size={11} />}
-          {locked ? "Reorder locked" : "Reorder unlocked"}
+          {reordering ? <Unlock size={11} /> : <Lock size={11} />}
+          {reordering ? "Reordering — tap to finish" : "Reorder tracks"}
         </button>
       </div>
-      <div className={`rounded-lg border transition-colors ${locked ? "border-border" : "border-primary/40 ring-1 ring-primary/10"}`}>
-        {tracks.map((track, idx) => (
-          <TrackRow
-            key={track.id}
-            track={track}
-            index={idx}
-            isActive={player.projectId === projectId && player.trackIndex === idx}
-            isPlaying={player.projectId === projectId && player.trackIndex === idx && player.isPlaying}
-            isLast={idx === tracks.length - 1}
-            isDragOver={overIdx === idx}
-            reorderUnlocked={!locked}
-            onPlay={() => playTrack(projectId, idx, projectQueue, idx)}
-            onDelete={() => onDelete(track)}
-            isEditing={editingTrackId === track.id}
-            editingName={editingName}
-            onStartEdit={() => onStartEdit(track)}
-            onEditName={onEditName}
-            onSaveEdit={() => onSaveEdit(track)}
-            onCancelEdit={onCancelEdit}
-            onDragStart={() => onDragStart(idx)}
-            onDragOver={e => onDragOver(e, idx)}
-            onDrop={e => onDrop(e, idx)}
-            onDragEnd={onDragEnd}
-            liked={isLiked ? isLiked(projectId, track.id) : undefined}
-            onToggleLike={toggleLike ? () => toggleLike(projectId, track.id) : undefined}
-            onAddToFront={addToFront ? () => addToFront(projectId, idx) : undefined}
-            onAddToBack={addToBack ? () => addToBack(projectId, idx) : undefined}
-          />
-        ))}
+
+      {reordering ? (
+        <ReorderPanel tracks={tracks} onReorder={onReorder} onDone={() => setReordering(false)} />
+      ) : (
+        <div className="rounded-lg border border-border">
+          {tracks.map((track, idx) => (
+            <TrackRow
+              key={track.id}
+              track={track}
+              index={idx}
+              isActive={player.projectId === projectId && player.trackIndex === idx}
+              isPlaying={player.projectId === projectId && player.trackIndex === idx && player.isPlaying}
+              isLast={idx === tracks.length - 1}
+              isDragOver={false}
+              onPlay={() => playTrack(projectId, idx, projectQueue, idx)}
+              onDelete={() => onDelete(track)}
+              isEditing={editingTrackId === track.id}
+              editingName={editingName}
+              onStartEdit={() => onStartEdit(track)}
+              onEditName={onEditName}
+              onSaveEdit={() => onSaveEdit(track)}
+              onCancelEdit={onCancelEdit}
+              liked={isLiked ? isLiked(projectId, track.id) : undefined}
+              onToggleLike={toggleLike ? () => toggleLike(projectId, track.id) : undefined}
+              onAddToFront={addToFront ? () => addToFront(projectId, idx) : undefined}
+              onAddToBack={addToBack ? () => addToBack(projectId, idx) : undefined}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── ReorderPanel — dedicated, scrollable drag-to-reorder surface ───────────
+
+function ReorderPanel({ tracks, onReorder, onDone }: {
+  tracks: Track[];
+  onReorder: (tracks: Track[]) => void;
+  onDone: () => void;
+}) {
+  const [dragId, setDragId] = useState<string | null>(null);
+  /** Insertion slot: 0..tracks.length (the gap the dragged track will land in). */
+  const [slot, setSlot] = useState<number | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const autoScroll = useRef<number>(0);
+
+  const dragIdx = dragId ? tracks.findIndex(t => t.id === dragId) : -1;
+  /** Final track number the dragged item would get (1-based). */
+  const targetNo = slot === null ? null : (dragIdx > -1 && slot > dragIdx ? slot : slot + 1);
+
+  const move = (from: number, to: number) => {
+    if (to < 0 || to >= tracks.length || from === to) return;
+    const next = [...tracks];
+    const [m] = next.splice(from, 1);
+    next.splice(to, 0, m);
+    onReorder(next);
+  };
+
+  const commit = () => {
+    if (dragIdx > -1 && slot !== null) {
+      const to = slot > dragIdx ? slot - 1 : slot;
+      move(dragIdx, to);
+    }
+    setDragId(null);
+    setSlot(null);
+    stopScroll();
+  };
+
+  const stopScroll = () => {
+    if (autoScroll.current) { cancelAnimationFrame(autoScroll.current); autoScroll.current = 0; }
+  };
+
+  // Auto-scroll the list when dragging near its top/bottom edge
+  const edgeScroll = (clientY: number) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const zone = 56;
+    let dy = 0;
+    if (clientY < rect.top + zone) dy = -Math.ceil((rect.top + zone - clientY) / 6);
+    else if (clientY > rect.bottom - zone) dy = Math.ceil((clientY - (rect.bottom - zone)) / 6);
+    stopScroll();
+    if (!dy) return;
+    const step = () => {
+      el.scrollTop += dy;
+      autoScroll.current = requestAnimationFrame(step);
+    };
+    autoScroll.current = requestAnimationFrame(step);
+  };
+
+  useEffect(() => stopScroll, []);
+
+  const rowDragOver = (e: React.DragEvent, idx: number) => {
+    e.preventDefault();
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const after = e.clientY > rect.top + rect.height / 2;
+    setSlot(after ? idx + 1 : idx);
+    edgeScroll(e.clientY);
+  };
+
+  return (
+    <div className="rounded-xl border border-primary/40 bg-card/60 ring-1 ring-primary/10 overflow-hidden">
+      <div className="flex items-center justify-between gap-3 px-3 py-2 border-b border-border bg-secondary/50">
+        <div className="flex items-center gap-2 min-w-0">
+          <ArrowUpDown size={12} className="text-primary shrink-0" />
+          <p className="text-[11px] font-semibold text-muted-foreground truncate">
+            Drag a track, or use the arrows. {tracks.length} track{tracks.length === 1 ? "" : "s"}
+          </p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {targetNo !== null && (
+            <span className="px-2 py-1 rounded-md bg-primary/15 text-primary text-[11px] font-bold tabular-nums">
+              → #{targetNo}
+            </span>
+          )}
+          <button onClick={onDone}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-primary text-primary-foreground text-[11px] font-bold transition-all active:scale-95">
+            <Check size={11} /> Done
+          </button>
+        </div>
+      </div>
+
+      <div
+        ref={scrollRef}
+        onDragLeave={stopScroll}
+        className="max-h-[430px] overflow-y-auto overscroll-contain"
+        style={{ contain: "content" }}
+      >
+        {tracks.map((track, idx) => {
+          const isDragged = dragId === track.id;
+          return (
+            <div key={track.id} className="relative">
+              {slot === idx && <div className="absolute -top-px left-0 right-0 h-0.5 bg-primary z-10 rounded-full" />}
+              <div
+                draggable
+                onDragStart={e => { setDragId(track.id); setSlot(idx); e.dataTransfer.effectAllowed = "move"; }}
+                onDragOver={e => rowDragOver(e, idx)}
+                onDrop={e => { e.preventDefault(); commit(); }}
+                onDragEnd={commit}
+                className={`flex items-center gap-3 px-3 py-2.5 border-b border-border/60 select-none cursor-grab active:cursor-grabbing transition-[opacity,background-color,transform] duration-150 ${
+                  isDragged ? "opacity-40 bg-primary/5 scale-[0.99]" : "hover:bg-secondary/60"
+                }`}
+              >
+                <GripVertical size={15} className="text-primary/70 shrink-0" />
+                <span className="w-8 shrink-0 text-center text-sm font-extrabold tabular-nums text-muted-foreground">
+                  {idx + 1}
+                </span>
+                <p className="flex-1 min-w-0 text-sm font-semibold truncate">{track.name}</p>
+                <span className="text-[11px] text-muted-foreground tabular-nums shrink-0">{fmt(track.duration)}</span>
+                <div className="flex items-center gap-0.5 shrink-0">
+                  <button onClick={() => move(idx, idx - 1)} disabled={idx === 0}
+                    className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground hover:text-foreground disabled:opacity-25 transition-colors"
+                    title="Move up" aria-label="Move up">
+                    <ChevronDown size={14} className="rotate-180" />
+                  </button>
+                  <button onClick={() => move(idx, idx + 1)} disabled={idx === tracks.length - 1}
+                    className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground hover:text-foreground disabled:opacity-25 transition-colors"
+                    title="Move down" aria-label="Move down">
+                    <ChevronDown size={14} />
+                  </button>
+                </div>
+              </div>
+              {idx === tracks.length - 1 && slot === tracks.length && (
+                <div className="absolute -bottom-px left-0 right-0 h-0.5 bg-primary z-10 rounded-full" />
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
 }
+
 
 function QueueDropdown({ onAddToFront, onAddToBack }: {
   onAddToFront?: () => void; onAddToBack?: () => void; isLast?: boolean;
