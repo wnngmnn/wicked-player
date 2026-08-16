@@ -3519,8 +3519,8 @@ function TrackRow({
   isEditing: boolean; editingName: string;
   onStartEdit: () => void; onEditName: (v: string) => void;
   onSaveEdit: () => void; onCancelEdit: () => void;
-  onDragStart: () => void; onDragOver: (e: React.DragEvent) => void;
-  onDrop: (e: React.DragEvent) => void; onDragEnd: () => void;
+  onDragStart?: () => void; onDragOver?: (e: React.DragEvent) => void;
+  onDrop?: (e: React.DragEvent) => void; onDragEnd?: () => void;
   liked?: boolean; onToggleLike?: () => void;
   onAddToFront?: () => void; onAddToBack?: () => void;
 }) {
