@@ -3507,7 +3507,7 @@ function QueueDropdown({ onAddToFront, onAddToBack }: {
   );
 }
 
-function TrackRow({
+function TrackRowBase({
   track, index, isActive, isPlaying, isLast, isDragOver, reorderUnlocked, onPlay, onDelete,
   isEditing, editingName, onStartEdit, onEditName, onSaveEdit, onCancelEdit,
   onDragStart, onDragOver, onDrop, onDragEnd, liked, onToggleLike,
