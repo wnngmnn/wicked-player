@@ -7,7 +7,7 @@ import {
   Music, Shuffle, ImagePlus, Link2, ListMusic,
   Library, User, Settings, PanelLeftClose, PanelLeftOpen, Home,
   Search, GripVertical, LayoutList, Maximize2, ChevronDown, ArrowUpDown,
-  Heart, Star, Globe, Lock, Unlock, Calendar, Tag
+  Heart, Star, Globe, Lock, Unlock, Calendar, Tag, FileText
 } from "lucide-react";
 import StatsPanel from "./StatsPanel";
 import { recordListen, recordPlay, flushStats } from "./stats";
@@ -33,6 +33,8 @@ interface Track {
   /** File name inside the user's local music folder (File System Access API). */
   filePath?: string;
   duration: number;
+  /** Optional lyrics shown in the fullscreen player. */
+  lyrics?: string;
 }
 
 interface Project {
@@ -2933,6 +2935,7 @@ function ProjectView({ projects, setProjects, player, playTrack, nav, showToast,
   const [fileDragOver, setFileDragOver] = useState(false);
   const [autoTag, setAutoTag] = useState(true);
   const [tagging, setTagging] = useState<string | null>(null);
+  const [lyricsTrackId, setLyricsTrackId] = useState<string | null>(null);
 
   if (!project) {
     return (
@@ -2988,6 +2991,12 @@ function ProjectView({ projects, setProjects, player, playTrack, nav, showToast,
   const handleRename = (trackId: string, name: string) => {
     update({ tracks: project.tracks.map(t => t.id === trackId ? { ...t, name } : t) });
     setEditingTrackId(null);
+  };
+
+  const saveLyrics = (trackId: string, lyrics: string) => {
+    update({ tracks: project.tracks.map(t => t.id === trackId ? { ...t, lyrics: lyrics.trim() || undefined } : t) });
+    setLyricsTrackId(null);
+    showToast(lyrics.trim() ? "Lyrics saved" : "Lyrics cleared");
   };
 
   const handleShare = () => {
@@ -3197,12 +3206,19 @@ function ProjectView({ projects, setProjects, player, playTrack, nav, showToast,
             onEditName={setEditingName}
             onSaveEdit={(track) => handleRename(track.id, editingName.trim() || track.name)}
             onCancelEdit={() => setEditingTrackId(null)}
+            onEditLyrics={(track) => setLyricsTrackId(track.id)}
             toggleLike={toggleLike}
             isLiked={isLiked}
             addToFront={addToFront}
             addToBack={addToBack}
           />
         )}
+
+        {lyricsTrackId && (() => {
+          const t = project.tracks.find(x => x.id === lyricsTrackId);
+          if (!t) return null;
+          return <LyricsEditor track={t} onSave={(v) => saveLyrics(t.id, v)} onCancel={() => setLyricsTrackId(null)} />;
+        })()}
 
         <div className="mt-14 pt-6 border-t border-border/40">
           <button onClick={handleDeleteProject} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-destructive transition-colors font-medium">
@@ -3215,12 +3231,61 @@ function ProjectView({ projects, setProjects, player, playTrack, nav, showToast,
   );
 }
 
+// ── LyricsEditor — modal for adding/editing a track's lyrics ───────────────
+
+function LyricsEditor({ track, onSave, onCancel }: {
+  track: Track; onSave: (lyrics: string) => void; onCancel: () => void;
+}) {
+  const [text, setText] = useState(track.lyrics ?? "");
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => { if (e.key === "Escape") onCancel(); };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [onCancel]);
+
+  return createPortal(
+    <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/60" onClick={onCancel} />
+      <div className="relative w-full max-w-2xl bg-card border border-border rounded-xl shadow-2xl animate-app-scale-in overflow-hidden">
+        <div className="flex items-center gap-2 px-5 py-3.5 border-b border-border">
+          <FileText size={14} className="text-primary" />
+          <div className="min-w-0">
+            <p className="text-sm font-bold truncate">Lyrics</p>
+            <p className="text-[11px] text-muted-foreground truncate">{track.name}</p>
+          </div>
+          <button onClick={onCancel} className="ml-auto p-1.5 rounded-md hover:bg-secondary text-muted-foreground"><X size={15} /></button>
+        </div>
+        <div className="p-5">
+          <textarea
+            autoFocus
+            value={text}
+            onChange={e => setText(e.target.value)}
+            placeholder={"Paste or type the lyrics here…\n\nBlank lines separate sections."}
+            spellCheck={false}
+            className="w-full h-[45vh] resize-none bg-secondary/60 border border-border rounded-lg px-4 py-3 text-sm leading-relaxed outline-none focus:border-primary/60 font-medium"
+          />
+          <div className="flex items-center justify-between gap-3 mt-4">
+            <span className="text-[11px] text-muted-foreground tabular-nums">{text.trim() ? `${text.trim().split(/\s+/).length} words` : "No lyrics yet"}</span>
+            <div className="flex items-center gap-2">
+              <button onClick={onCancel} className="px-4 py-2 rounded-md border border-border text-sm font-semibold hover:bg-secondary transition-colors">Cancel</button>
+              <button onClick={() => onSave(text)} className="flex items-center gap-1.5 px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-bold transition-all active:scale-95">
+                <Check size={14} /> Save lyrics
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 // ── TrackList (with drag-to-reorder) ──────────────────────────────────────
 
 function TrackList({
   tracks, projectId, player, playTrack, onReorder, onDelete,
   editingTrackId, editingName, onStartEdit, onEditName, onSaveEdit, onCancelEdit,
-  toggleLike, isLiked, addToFront, addToBack,
+  onEditLyrics, toggleLike, isLiked, addToFront, addToBack,
 }: {
   tracks: Track[]; projectId: string;
   player: PlayerState; playTrack: (pid: string, idx: number, queue?: QueueItem[], queuePos?: number) => Promise<unknown>;
@@ -3229,6 +3294,7 @@ function TrackList({
   editingTrackId: string | null; editingName: string;
   onStartEdit: (track: Track) => void; onEditName: (v: string) => void;
   onSaveEdit: (track: Track) => void; onCancelEdit: () => void;
+  onEditLyrics?: (track: Track) => void;
   toggleLike?: (pid: string, tid: string) => void;
   isLiked?: (pid: string, tid: string) => boolean;
   addToFront?: (pid: string, tidx: number) => void;
@@ -3257,7 +3323,7 @@ function TrackList({
       </div>
 
       {reordering ? (
-        <ReorderPanel tracks={tracks} onReorder={onReorder} onDone={() => setReordering(false)} />
+        <ReorderPanel tracks={tracks} onReorder={onReorder} onDone={() => setReordering(false)} onEditLyrics={onEditLyrics} />
       ) : (
         <div className="rounded-lg border border-border">
           {tracks.map((track, idx) => (
@@ -3277,6 +3343,8 @@ function TrackList({
               onEditName={onEditName}
               onSaveEdit={() => onSaveEdit(track)}
               onCancelEdit={onCancelEdit}
+              onEditLyrics={onEditLyrics ? () => onEditLyrics(track) : undefined}
+              hasLyrics={!!track.lyrics}
               liked={isLiked ? isLiked(projectId, track.id) : undefined}
               onToggleLike={toggleLike ? () => toggleLike(projectId, track.id) : undefined}
               onAddToFront={addToFront ? () => addToFront(projectId, idx) : undefined}
@@ -3291,10 +3359,11 @@ function TrackList({
 
 // ── ReorderPanel — dedicated, scrollable drag-to-reorder surface ───────────
 
-function ReorderPanel({ tracks, onReorder, onDone }: {
+function ReorderPanel({ tracks, onReorder, onDone, onEditLyrics }: {
   tracks: Track[];
   onReorder: (tracks: Track[]) => void;
   onDone: () => void;
+  onEditLyrics?: (track: Track) => void;
 }) {
   const [dragId, setDragId] = useState<string | null>(null);
   /** Insertion slot: 0..tracks.length (the gap the dragged track will land in). */
@@ -3406,6 +3475,13 @@ function ReorderPanel({ tracks, onReorder, onDone }: {
                 <p className="flex-1 min-w-0 text-sm font-semibold truncate">{track.name}</p>
                 <span className="text-[11px] text-muted-foreground tabular-nums shrink-0">{fmt(track.duration)}</span>
                 <div className="flex items-center gap-0.5 shrink-0">
+                  {onEditLyrics && (
+                    <button onClick={() => onEditLyrics(track)}
+                      className={`p-1.5 rounded-md hover:bg-secondary transition-colors ${track.lyrics ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
+                      title={track.lyrics ? "Edit lyrics" : "Add lyrics"} aria-label="Lyrics">
+                      <FileText size={14} />
+                    </button>
+                  )}
                   <button onClick={() => move(idx, idx - 1)} disabled={idx === 0}
                     className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground hover:text-foreground disabled:opacity-25 transition-colors"
                     title="Move up" aria-label="Move up">
@@ -3511,7 +3587,7 @@ function TrackRowBase({
   track, index, isActive, isPlaying, isLast, isDragOver, reorderUnlocked, onPlay, onDelete,
   isEditing, editingName, onStartEdit, onEditName, onSaveEdit, onCancelEdit,
   onDragStart, onDragOver, onDrop, onDragEnd, liked, onToggleLike,
-  onAddToFront, onAddToBack,
+  onAddToFront, onAddToBack, onEditLyrics, hasLyrics,
 }: {
   track: Track; index: number; isActive: boolean; isPlaying: boolean; isLast: boolean; isDragOver: boolean;
   reorderUnlocked?: boolean;
@@ -3523,6 +3599,7 @@ function TrackRowBase({
   onDrop?: (e: React.DragEvent) => void; onDragEnd?: () => void;
   liked?: boolean; onToggleLike?: () => void;
   onAddToFront?: () => void; onAddToBack?: () => void;
+  onEditLyrics?: () => void; hasLyrics?: boolean;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   useEffect(() => { if (isEditing) inputRef.current?.focus(); }, [isEditing]);
@@ -3593,6 +3670,12 @@ function TrackRowBase({
       <div className="flex items-center gap-1 shrink-0" onClick={e => e.stopPropagation()}>
         {isEditing ? (
           <>
+            {onEditLyrics && (
+              <button onClick={onEditLyrics} title={hasLyrics ? "Edit lyrics" : "Add lyrics"}
+                className={`flex items-center gap-1 px-2 py-1.5 rounded-md text-[11px] font-semibold transition-colors ${hasLyrics ? "text-primary hover:bg-primary/15" : "text-muted-foreground hover:text-foreground hover:bg-secondary"}`}>
+                <FileText size={13} /> Lyrics
+              </button>
+            )}
             <button onClick={onSaveEdit} className="p-1.5 rounded-md hover:bg-primary/20 text-primary transition-colors"><Check size={14} /></button>
             <button onClick={onCancelEdit} className="p-1.5 rounded-md hover:bg-secondary transition-colors text-muted-foreground"><X size={14} /></button>
           </>
@@ -3610,6 +3693,12 @@ function TrackRowBase({
                 onAddToBack={onAddToBack}
                 isLast={isLast}
               />
+            )}
+            {onEditLyrics && (
+              <button onClick={onEditLyrics} title={hasLyrics ? "Edit lyrics" : "Add lyrics"}
+                className={`p-1.5 rounded-md transition-all hover:bg-secondary ${hasLyrics ? "text-primary" : "opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground"}`}>
+                <FileText size={13} />
+              </button>
             )}
             <button onClick={onStartEdit} className="opacity-0 group-hover:opacity-100 p-1.5 rounded-md hover:bg-secondary transition-all text-muted-foreground hover:text-foreground"><Edit2 size={13} /></button>
             <button onClick={onDelete} className="opacity-0 group-hover:opacity-100 p-1.5 rounded-md hover:bg-destructive/15 transition-all text-muted-foreground hover:text-destructive"><Trash2 size={13} /></button>
