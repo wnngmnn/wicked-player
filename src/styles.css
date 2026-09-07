@@ -240,8 +240,7 @@
   input[type="range"]:hover::-webkit-slider-thumb { transform: scale(1.18); }
   input[type="range"]:active::-webkit-slider-thumb { transform: scale(1.32); }
 
-  /* Images and covers fade in as they decode */
-  img { animation: app-fade-in 300ms ease-out both; }
+  /* Images decode without a per-image animation (keeps large grids smooth) */
 }
 
 /* Theme switching: crossfade colors app-wide instead of snapping */
@@ -281,4 +280,6 @@
   & > *:nth-child(7) { animation-delay: 180ms; }
   & > *:nth-child(8) { animation-delay: 210ms; }
   & > *:nth-child(n+9) { animation-delay: 240ms; }
+  /* Long lists skip entrance animation entirely to avoid jank */
+  & > *:nth-child(n+25) { animation: none; }
 }

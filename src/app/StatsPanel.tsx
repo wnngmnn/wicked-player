@@ -48,7 +48,7 @@ function Rank({ i }: { i: number }) {
 
 function Cover({ src, fallback }: { src?: string | null; fallback: React.ReactNode }) {
   return (
-    <div className="w-11 h-11 rounded-lg overflow-hidden bg-secondary border border-border shrink-0 flex items-center justify-center">
+    <div className="w-11 h-11 rounded-md overflow-hidden bg-secondary border border-border shrink-0 flex items-center justify-center">
       {src ? <img src={src} alt="" className="w-full h-full object-cover" /> : fallback}
     </div>
   );
@@ -71,8 +71,8 @@ function RankList({ title, icon, rows, empty }: {
       ) : (
         <ul className="stagger-children space-y-1.5">
           {rows.map((r, i) => (
-            <li key={r.key} className="relative flex items-center gap-3 p-2 rounded-lg overflow-hidden">
-              <div className="absolute inset-y-0 left-0 bg-primary/10 rounded-lg transition-all duration-500"
+            <li key={r.key} className="relative flex items-center gap-3 p-2 rounded-md overflow-hidden">
+              <div className="absolute inset-y-0 left-0 bg-primary/10 rounded-md transition-all duration-500"
                 style={{ width: `${Math.max(6, r.pct * 100)}%` }} />
               <Rank i={i} />
               <Cover src={r.cover} fallback={r.fallback} />
@@ -129,13 +129,13 @@ export default function StatsPanel({ projects }: { projects: ProjectLike[] }) {
       </div>
 
       {/* Period tabs */}
-      <div className="flex items-center gap-1 p-1 bg-secondary rounded-full w-fit mb-4">
+      <div className="flex items-center gap-1 p-1 bg-secondary rounded-lg w-fit mb-4 border border-border">
         {TABS.map(t => (
           <button key={t.kind} onClick={() => setKind(t.kind)}
-            className={`relative px-4 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+            className={`relative px-4 py-1.5 rounded-md text-xs font-semibold transition-colors ${
               kind === t.kind ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
             {kind === t.kind && (
-              <motion.span layoutId="stats-tab" className="absolute inset-0 rounded-full bg-primary"
+              <motion.span layoutId="stats-tab" className="absolute inset-0 rounded-md bg-primary"
                 transition={{ type: "spring", stiffness: 420, damping: 34 }} />
             )}
             <span className="relative">{t.label}</span>
@@ -145,10 +145,10 @@ export default function StatsPanel({ projects }: { projects: ProjectLike[] }) {
 
       {/* Summary card */}
       <div className="relative overflow-hidden bg-card border border-border rounded-xl p-5 mb-4">
-        <div className="absolute -top-20 -right-16 w-64 h-64 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
+        <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-primary/10 to-transparent pointer-events-none" />
         <div className="relative flex items-center justify-between gap-4 mb-4">
           <button onClick={() => canGoBack && setOffset(o => o + 1)} disabled={!canGoBack}
-            className="p-2 rounded-full hover:bg-secondary text-muted-foreground disabled:opacity-30"
+            className="p-2 rounded-md border border-border bg-card hover:bg-secondary text-muted-foreground disabled:opacity-30"
             aria-label="Previous period">
             <ChevronLeft size={16} />
           </button>
@@ -157,7 +157,7 @@ export default function StatsPanel({ projects }: { projects: ProjectLike[] }) {
             <p className="text-[11px] text-muted-foreground/60 truncate">{RESET_NOTE[kind]}</p>
           </div>
           <button onClick={() => setOffset(o => Math.max(0, o - 1))} disabled={offset === 0}
-            className="p-2 rounded-full hover:bg-secondary text-muted-foreground disabled:opacity-30"
+            className="p-2 rounded-md border border-border bg-card hover:bg-secondary text-muted-foreground disabled:opacity-30"
             aria-label="Next period">
             <ChevronRight size={16} />
           </button>

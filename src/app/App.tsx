@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useLayoutEffect } from "react";
+import { useState, useEffect, useRef, useCallback, useLayoutEffect, memo } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
 import {
@@ -3507,7 +3507,7 @@ function QueueDropdown({ onAddToFront, onAddToBack }: {
   );
 }
 
-function TrackRow({
+function TrackRowBase({
   track, index, isActive, isPlaying, isLast, isDragOver, reorderUnlocked, onPlay, onDelete,
   isEditing, editingName, onStartEdit, onEditName, onSaveEdit, onCancelEdit,
   onDragStart, onDragOver, onDrop, onDragEnd, liked, onToggleLike,
@@ -3619,6 +3619,7 @@ function TrackRow({
     </div>
   );
 }
+const TrackRow = memo(TrackRowBase);
 
 function EditProjectForm({ project, onSave, onCancel }: { project: Project; onSave: (u: Partial<Project>) => void; onCancel: () => void }) {
   const [name, setName] = useState(project.name);
