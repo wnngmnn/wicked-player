@@ -3619,6 +3619,7 @@ function TrackRowBase({
     </div>
   );
 }
+const TrackRow = memo(TrackRowBase);
 
 function EditProjectForm({ project, onSave, onCancel }: { project: Project; onSave: (u: Partial<Project>) => void; onCancel: () => void }) {
   const [name, setName] = useState(project.name);
