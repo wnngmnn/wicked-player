@@ -7688,7 +7688,7 @@ function FullscreenPlayerInner({
             <Shuffle size={16} />
           </button>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }
