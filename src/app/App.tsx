@@ -7441,14 +7441,7 @@ function FullscreenPlayer(props: React.ComponentProps<typeof FullscreenPlayerInn
         )}
       </AnimatePresence>
 
-      <motion.div
-        className="fixed inset-0 z-[200]"
-        animate={showLyrics ? { scale: 0.56, x: "-24%" } : { scale: 1, x: "0%" }}
-        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-        style={{ transformOrigin: "center center" }}
-      >
-        <FullscreenPlayerInner {...props} />
-      </motion.div>
+      <FullscreenPlayerInner {...props} lyricsOpen={showLyrics} />
 
       <button
         onClick={() => setShowLyrics(v => !v)}
@@ -7502,7 +7495,7 @@ function FullscreenPlayerInner({
   project, track, player,
   onTogglePlay, onSeek, onVolume, onPrev, onNext, onShuffle, onClose,
   toggleLike, isLiked, layoutTheme = "default" as LayoutTheme,
-  fsBg, analyserRef,
+  fsBg, analyserRef, lyricsOpen = false,
 }: {
   project: Project; track: Track; player: PlayerState;
   onTogglePlay: () => void; onSeek: (t: number) => void; onVolume: (v: number) => void;
@@ -7512,6 +7505,7 @@ function FullscreenPlayerInner({
   layoutTheme?: LayoutTheme;
   fsBg?: FsBgConfig;
   analyserRef?: React.MutableRefObject<AnalyserNode | null>;
+  lyricsOpen?: boolean;
 }) {
   const [accentColor, setAccentColor] = useState("20,20,40");
 
@@ -7554,8 +7548,12 @@ function FullscreenPlayerInner({
         <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(0,0,0,0.25) 0%, rgba(0,0,0,0.55) 100%)" }} />
       </div>
 
-      {/* ── Content ── */}
-      <div className="relative z-10 flex flex-col h-full text-white max-w-xl mx-auto w-full px-8 pb-10">
+      {/* ── Content — pushed to the left half while lyrics are open ── */}
+      <motion.div
+        className="relative z-10 flex flex-col h-full text-white max-w-xl mx-auto w-full px-8 pb-10"
+        animate={{ paddingRight: lyricsOpen ? "calc(50% - 288px)" : "32px" }}
+        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+      >
 
         {/* Top bar — minimal grab handle + label */}
         <div className="flex items-center justify-between pt-5 pb-4">
@@ -7690,7 +7688,7 @@ function FullscreenPlayerInner({
             <Shuffle size={16} />
           </button>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }
