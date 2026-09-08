@@ -7420,27 +7420,6 @@ function FullscreenPlayer(props: React.ComponentProps<typeof FullscreenPlayerInn
 
   return (
     <>
-      {/* Backdrop kept full-bleed while the player shrinks to the left (Apple Music style) */}
-      <AnimatePresence>
-        {showLyrics && (
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            transition={{ duration: 0.35 }}
-            className="fixed inset-0 z-[199] overflow-hidden pointer-events-none"
-          >
-            {props.project.coverDataUrl && (
-              <img
-                src={props.project.coverDataUrl}
-                alt=""
-                className="absolute inset-0 w-full h-full object-cover"
-                style={{ filter: "blur(90px) saturate(160%)", transform: "scale(1.6)" }}
-              />
-            )}
-            <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(0,0,0,0.5), rgba(0,0,0,0.7))" }} />
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       <FullscreenPlayerInner {...props} lyricsOpen={showLyrics} />
 
       <button
@@ -7456,22 +7435,22 @@ function FullscreenPlayer(props: React.ComponentProps<typeof FullscreenPlayerInn
         {showLyrics && (
           <motion.div
             initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 40 }}
-            transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
             className="fixed top-0 right-0 bottom-0 z-[205] w-1/2 overflow-y-auto text-white"
             style={{
-              maskImage: "linear-gradient(180deg, transparent 0%, #000 9%, #000 84%, transparent 100%)",
-              WebkitMaskImage: "linear-gradient(180deg, transparent 0%, #000 9%, #000 84%, transparent 100%)",
+              maskImage: "linear-gradient(180deg, transparent 0%, #000 10%, #000 82%, transparent 100%)",
+              WebkitMaskImage: "linear-gradient(180deg, transparent 0%, #000 10%, #000 82%, transparent 100%)",
             }}
           >
-            <div className="px-10 py-[28vh] pr-16 max-w-[640px]">
+            <div className="pl-4 pr-14 py-[34vh] max-w-[680px]">
               {track.lyrics ? (
                 lines.map((line, i) => (
                   line.trim() === "" ? (
-                    <div key={i} className="h-7" />
+                    <div key={i} className="h-8" />
                   ) : (
                     <p
                       key={i}
-                      className="text-[34px] leading-[1.18] font-extrabold tracking-tight mb-5 transition-colors duration-300 text-white/35 hover:text-white/95 cursor-default"
+                      className={`text-[40px] leading-[1.14] font-extrabold tracking-tight mb-6 transition-colors duration-300 cursor-default ${i === 0 ? "text-white" : "text-white/30 hover:text-white/90"}`}
                     >
                       {line}
                     </p>
@@ -7489,6 +7468,7 @@ function FullscreenPlayer(props: React.ComponentProps<typeof FullscreenPlayerInn
     </>
   );
 }
+
 
 
 function FullscreenPlayerInner({
