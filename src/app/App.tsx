@@ -7441,14 +7441,7 @@ function FullscreenPlayer(props: React.ComponentProps<typeof FullscreenPlayerInn
         )}
       </AnimatePresence>
 
-      <motion.div
-        className="fixed inset-0 z-[200]"
-        animate={showLyrics ? { scale: 0.56, x: "-24%" } : { scale: 1, x: "0%" }}
-        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-        style={{ transformOrigin: "center center" }}
-      >
-        <FullscreenPlayerInner {...props} />
-      </motion.div>
+      <FullscreenPlayerInner {...props} lyricsOpen={showLyrics} />
 
       <button
         onClick={() => setShowLyrics(v => !v)}
