@@ -6693,7 +6693,12 @@ function FsBackground({ project, accentColor, fsBg, analyserRef, isPlaying }: {
           : "cover",
         objectPosition: "center",
         filter: (fsBg.customBlur ?? 0) > 0 ? `blur(${customBlurPx})` : undefined,
-        transform: (fsBg.customBlur ?? 0) > 0 ? "scale(1.08)" : undefined,
+        // Overscan by ~3x the blur radius so blurred edges never fade the corners
+        ...((fsBg.customBlur ?? 0) > 0 ? {
+          inset: `-${(fsBg.customBlur ?? 0) * 3}px`,
+          width: `calc(100% + ${(fsBg.customBlur ?? 0) * 6}px)`,
+          height: `calc(100% + ${(fsBg.customBlur ?? 0) * 6}px)`,
+        } : {}),
       }}
     />
   ) : hasCover ? (
@@ -6717,11 +6722,11 @@ function FsBackground({ project, accentColor, fsBg, analyserRef, isPlaying }: {
     <>
       <style>{`
         @keyframes kenBurns {
-          0%   { transform: scale(1.08) translate(0, 0); }
-          25%  { transform: scale(1.12) translate(1%, -1%); }
-          50%  { transform: scale(1.10) translate(-1.5%, 0.5%); }
-          75%  { transform: scale(1.13) translate(0.5%, 1%); }
-          100% { transform: scale(1.09) translate(-1%, -0.5%); }
+          0%   { transform: scale(2.20) translate(0, 0); }
+          25%  { transform: scale(2.30) translate(1%, -1%); }
+          50%  { transform: scale(2.24) translate(-1.5%, 0.5%); }
+          75%  { transform: scale(2.32) translate(0.5%, 1%); }
+          100% { transform: scale(2.22) translate(-1%, -0.5%); }
         }
       `}</style>
 
@@ -7406,7 +7411,61 @@ function FullscreenScrubber({
   );
 }
 
-function FullscreenPlayer({
+function FullscreenPlayer(props: React.ComponentProps<typeof FullscreenPlayerInner>) {
+  const [showLyrics, setShowLyrics] = useState(false);
+  const { track } = props;
+  useEffect(() => { setShowLyrics(false); }, [track.id]);
+
+  return (
+    <>
+      <FullscreenPlayerInner {...props} />
+
+      <button
+        onClick={() => setShowLyrics(v => !v)}
+        className="fixed top-5 right-6 z-[210] flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-widest text-white/85 hover:text-white transition-colors"
+        style={{ background: showLyrics ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.10)" }}
+        aria-label="Toggle lyrics"
+      >
+        <FileText size={13} /> Lyrics
+      </button>
+
+      <AnimatePresence>
+        {showLyrics && (
+          <motion.div
+            initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 24 }}
+            transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
+            className="fixed inset-0 z-[205] flex flex-col text-white"
+            style={{ background: "rgba(0,0,0,0.72)", backdropFilter: "blur(28px) saturate(140%)" }}
+          >
+            <div className="shrink-0 px-6 pt-6 pb-3 max-w-2xl w-full mx-auto">
+              <p className="text-[11px] font-bold uppercase tracking-widest text-white/50">Lyrics</p>
+              <h3 className="text-xl font-bold truncate mt-1">{track.name}</h3>
+              <p className="text-sm text-white/60 truncate">{props.project.artist || "Unknown Artist"}</p>
+            </div>
+            <div className="flex-1 overflow-y-auto px-6 pb-24 max-w-2xl w-full mx-auto">
+              {track.lyrics ? (
+                <p className="whitespace-pre-wrap text-[19px] leading-[1.75] font-semibold text-white/90">{track.lyrics}</p>
+              ) : (
+                <p className="text-white/50 text-sm py-10">
+                  No lyrics for this song yet. Open the album, hover the song and use the Lyrics button to add them.
+                </p>
+              )}
+            </div>
+            <button
+              onClick={() => setShowLyrics(false)}
+              className="absolute bottom-8 left-1/2 -translate-x-1/2 px-5 py-2 rounded-lg text-xs font-bold uppercase tracking-widest text-white/85 hover:text-white"
+              style={{ background: "rgba(255,255,255,0.14)" }}
+            >
+              Close lyrics
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
+  );
+}
+
+function FullscreenPlayerInner({
   project, track, player,
   onTogglePlay, onSeek, onVolume, onPrev, onNext, onShuffle, onClose,
   toggleLike, isLiked, layoutTheme = "default" as LayoutTheme,
