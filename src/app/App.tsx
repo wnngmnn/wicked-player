@@ -7428,10 +7428,50 @@ function FullscreenScrubber({
 
 function FullscreenPlayer(props: React.ComponentProps<typeof FullscreenPlayerInner>) {
   const [showLyrics, setShowLyrics] = useState(false);
-  const { track } = props;
+  const { track, layoutTheme = "default" } = props;
   useEffect(() => { setShowLyrics(false); }, [track.id]);
 
   const lines = (track.lyrics ?? "").split(/\n/);
+  const isModernLyrics = layoutTheme === "modern";
+  const isClassicLyrics = layoutTheme === "classic";
+  const isUniqueLyrics = layoutTheme === "unique";
+  const lyricsPanelStyle: React.CSSProperties = isModernLyrics
+    ? {
+        width: "50%",
+        background: "linear-gradient(135deg, rgba(255,255,255,0.11), rgba(255,255,255,0.035))",
+        backdropFilter: "blur(42px) saturate(180%)",
+        WebkitBackdropFilter: "blur(42px) saturate(180%)",
+        borderLeft: "1px solid rgba(255,255,255,0.13)",
+        maskImage: "linear-gradient(180deg, transparent 0%, #000 11%, #000 84%, transparent 100%)",
+        WebkitMaskImage: "linear-gradient(180deg, transparent 0%, #000 11%, #000 84%, transparent 100%)",
+      }
+    : isClassicLyrics
+      ? {
+          width: "calc(100% - 400px)",
+          top: 39,
+          bottom: 28,
+          background: "linear-gradient(180deg, rgba(205,238,255,0.3), rgba(18,75,160,0.48))",
+          backdropFilter: "blur(22px) saturate(160%)",
+          WebkitBackdropFilter: "blur(22px) saturate(160%)",
+          borderLeft: "1px solid rgba(210,242,255,0.48)",
+          boxShadow: "inset 1px 0 rgba(255,255,255,0.25), -12px 0 40px rgba(0,35,100,0.25)",
+          fontFamily: "'Segoe UI',Tahoma,system-ui,sans-serif",
+        }
+      : isUniqueLyrics
+        ? {
+            width: "52%",
+            background: "rgba(1,1,8,0.88)",
+            borderLeft: "2px solid var(--primary)",
+            boxShadow: "-16px 0 48px color-mix(in srgb, var(--primary) 18%, transparent)",
+            fontFamily: "'SF Mono','Fira Code',monospace",
+            maskImage: "linear-gradient(180deg, transparent 0%, #000 10%, #000 87%, transparent 100%)",
+            WebkitMaskImage: "linear-gradient(180deg, transparent 0%, #000 10%, #000 87%, transparent 100%)",
+          }
+        : {
+            width: "52%",
+            maskImage: "linear-gradient(180deg, transparent 0%, #000 10%, #000 82%, transparent 100%)",
+            WebkitMaskImage: "linear-gradient(180deg, transparent 0%, #000 10%, #000 82%, transparent 100%)",
+          };
 
   return (
     <>
@@ -7439,8 +7479,12 @@ function FullscreenPlayer(props: React.ComponentProps<typeof FullscreenPlayerInn
 
       <button
         onClick={() => setShowLyrics(v => !v)}
-        className="fixed top-5 right-6 z-[210] flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-widest text-white/85 hover:text-white transition-colors"
-        style={{ background: showLyrics ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.10)" }}
+        className={`fixed z-[210] flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest transition-all ${isClassicLyrics ? "top-1.5 right-28 rounded-md text-white" : isUniqueLyrics ? "top-5 right-6 rounded-none text-primary" : "top-5 right-6 rounded-lg text-white/85 hover:text-white"}`}
+        style={isClassicLyrics
+          ? { background: showLyrics ? "linear-gradient(180deg,#9de8ff,#1679d5)" : "linear-gradient(180deg,rgba(220,245,255,.55),rgba(45,110,190,.55))", border: "1px solid rgba(210,240,255,.6)", boxShadow: "inset 0 1px rgba(255,255,255,.6),0 2px 7px rgba(0,25,80,.45)" }
+          : isUniqueLyrics
+            ? { background: showLyrics ? "color-mix(in srgb, var(--primary) 18%, transparent)" : "rgba(1,1,8,.72)", border: "1px solid currentColor", boxShadow: showLyrics ? "0 0 16px currentColor" : "none" }
+            : { background: showLyrics ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.10)", backdropFilter: isModernLyrics ? "blur(20px) saturate(180%)" : undefined, border: isModernLyrics ? "1px solid rgba(255,255,255,.14)" : undefined }}
         aria-label="Toggle lyrics"
       >
         <FileText size={13} /> Lyrics
@@ -7451,13 +7495,15 @@ function FullscreenPlayer(props: React.ComponentProps<typeof FullscreenPlayerInn
           <motion.div
             initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 40 }}
             transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-            className="fixed top-0 right-0 bottom-0 z-[205] w-[52%] overflow-y-auto text-white max-md:w-full max-md:bg-black/55"
-            style={{
-              maskImage: "linear-gradient(180deg, transparent 0%, #000 10%, #000 82%, transparent 100%)",
-              WebkitMaskImage: "linear-gradient(180deg, transparent 0%, #000 10%, #000 82%, transparent 100%)",
-            }}
+            className="fixed top-0 right-0 bottom-0 z-[205] overflow-y-auto text-white max-md:w-full max-md:bg-black/55"
+            style={lyricsPanelStyle}
           >
-            <div className="pl-[7%] pr-[10%] py-[31vh] max-w-[760px]">
+            <div className={`${isClassicLyrics ? "px-12 py-[25vh]" : isUniqueLyrics ? "px-12 py-[28vh]" : isModernLyrics ? "px-[10%] py-[29vh]" : "pl-[7%] pr-[10%] py-[31vh]"} max-w-[760px]`}>
+              {(isClassicLyrics || isUniqueLyrics) && (
+                <div className={`mb-8 text-xs font-bold uppercase tracking-widest ${isClassicLyrics ? "text-cyan-100/80" : "text-primary"}`}>
+                  {isClassicLyrics ? "Lyrics" : "// LYRICS_STREAM"}
+                </div>
+              )}
               {track.lyrics ? (
                 lines.map((line, i) => (
                   line.trim() === "" ? (
@@ -7465,7 +7511,7 @@ function FullscreenPlayer(props: React.ComponentProps<typeof FullscreenPlayerInn
                   ) : (
                     <p
                       key={i}
-                      className={`text-[clamp(28px,3vw,44px)] leading-[1.12] font-extrabold mb-7 transition-colors duration-300 cursor-default ${i === 0 ? "text-white" : "text-white/25 hover:text-white/85"}`}
+                      className={`${isClassicLyrics ? "text-[clamp(24px,2.5vw,36px)] leading-[1.2] font-semibold mb-5" : isUniqueLyrics ? "text-[clamp(20px,2.2vw,32px)] leading-[1.35] font-bold mb-6 uppercase" : isModernLyrics ? "text-[clamp(30px,3.2vw,46px)] leading-[1.1] font-bold mb-8" : "text-[clamp(28px,3vw,44px)] leading-[1.12] font-extrabold mb-7"} transition-colors duration-300 cursor-default ${i === 0 ? (isUniqueLyrics ? "text-primary" : "text-white") : isClassicLyrics ? "text-cyan-50/35 hover:text-white/90" : isUniqueLyrics ? "text-primary/30 hover:text-primary/90" : "text-white/25 hover:text-white/85"}`}
                     >
                       {line}
                     </p>
@@ -7527,7 +7573,7 @@ function FullscreenPlayerInner({
     project, track, player,
     onTogglePlay, onSeek, onVolume, onPrev, onNext, onShuffle, onClose,
     accentColor, liked,
-    toggleLike, fsBg, analyserRef,
+    toggleLike, fsBg, analyserRef, lyricsOpen,
   };
 
   if (layoutTheme === "modern") return <FullscreenModern {...sharedProps} />;
