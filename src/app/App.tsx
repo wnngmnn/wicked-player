@@ -6659,6 +6659,7 @@ interface FullscreenSharedProps {
   toggleLike?: (pid: string, tid: string) => void;
   fsBg?: FsBgConfig;
   analyserRef?: React.MutableRefObject<AnalyserNode | null>;
+  lyricsOpen?: boolean;
 }
 
 // ── Shared fullscreen background layer ─────────────────────────────────────
@@ -6811,7 +6812,7 @@ function FsBtn({
 }
 
 function FullscreenModern(props: FullscreenSharedProps) {
-  const { project, track, player, onTogglePlay, onSeek, onVolume, onPrev, onNext, onShuffle, onClose, accentColor, liked, toggleLike, fsBg, analyserRef } = props;
+  const { project, track, player, onTogglePlay, onSeek, onVolume, onPrev, onNext, onShuffle, onClose, accentColor, liked, toggleLike, fsBg, analyserRef, lyricsOpen } = props;
   const hasCover = !!project.coverDataUrl;
   const progress = player.duration > 0 ? player.currentTime / player.duration : 0;
   const [scrubHover, setScrubHover] = useState(false);
@@ -6837,8 +6838,11 @@ function FullscreenModern(props: FullscreenSharedProps) {
       />
 
       {/* Liquid glass card */}
-      <div
+      <motion.div
         className="relative z-10 w-full max-w-md mx-4 flex flex-col items-center animate-app-scale-in"
+        initial={false}
+        animate={{ x: lyricsOpen ? "-58%" : "0%", scale: lyricsOpen ? 0.92 : 1 }}
+        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
         style={{
           background: "linear-gradient(180deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.04) 100%)",
           backdropFilter: "blur(60px) saturate(220%)",
@@ -7018,14 +7022,14 @@ function FullscreenModern(props: FullscreenSharedProps) {
             <Volume2 size={14} />
           </button>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }
 
 
 function FullscreenClassic(props: FullscreenSharedProps) {
-  const { project, track, player, onTogglePlay, onSeek, onVolume, onPrev, onNext, onShuffle, onClose, liked, toggleLike } = props;
+  const { project, track, player, onTogglePlay, onSeek, onVolume, onPrev, onNext, onShuffle, onClose, liked, toggleLike, lyricsOpen } = props;
   const hasCover = !!project.coverDataUrl;
   const progress = player.duration > 0 ? player.currentTime / player.duration : 0;
   const CYAN = "#00c8ff", BLUE = "#1e8fef", DEEP = "#0a4fb0";
@@ -7182,7 +7186,13 @@ function FullscreenClassic(props: FullscreenSharedProps) {
         </div>
 
         {/* RIGHT: info + controls */}
-        <div className="flex-1 flex flex-col justify-center px-12 gap-8" style={{ minWidth: 0 }}>
+        <motion.div
+          className="flex-1 flex flex-col justify-center px-12 gap-8"
+          style={{ minWidth: 0 }}
+          initial={false}
+          animate={{ opacity: lyricsOpen ? 0 : 1, x: lyricsOpen ? -24 : 0 }}
+          transition={{ duration: 0.32 }}
+        >
 
           {/* Track info — Aero glass panel */}
           <div style={{
@@ -7268,7 +7278,7 @@ function FullscreenClassic(props: FullscreenSharedProps) {
             <input type="range" min={0} max={1} step={0.01} value={player.volume} onChange={e => onVolume(Number(e.target.value))} style={{ flex: 1, accentColor: CYAN, cursor: "pointer" }} />
             <span style={{ fontSize: 12, color: "#a8dcff", minWidth: 36, fontVariantNumeric: "tabular-nums" }}>{Math.round(player.volume * 100)}%</span>
           </div>
-        </div>
+        </motion.div>
       </div>
 
       {/* Aero status bar */}
@@ -7303,7 +7313,7 @@ function FullscreenClassic(props: FullscreenSharedProps) {
 
 
 function FullscreenUnique(props: FullscreenSharedProps) {
-  const { project, track, player, onTogglePlay, onSeek, onVolume, onPrev, onNext, onShuffle, onClose, accentColor, liked, toggleLike } = props;
+  const { project, track, player, onTogglePlay, onSeek, onVolume, onPrev, onNext, onShuffle, onClose, accentColor, liked, toggleLike, lyricsOpen } = props;
   const hasCover = !!project.coverDataUrl;
   const progress = player.duration > 0 ? player.currentTime / player.duration : 0;
   return (
@@ -7317,7 +7327,12 @@ function FullscreenUnique(props: FullscreenSharedProps) {
         <div key={i} className={`absolute ${pos} w-12 h-12`} style={{ border:`2px solid rgb(${accentColor})`, borderRight:i%2===0?"none":"2px solid", borderLeft:i%2===0?"2px solid":"none", borderBottom:i<2?"none":"2px solid", borderTop:i<2?"2px solid":"none", opacity:0.6 }} />
       ))}
       {/* Content */}
-      <div className="relative z-10 flex h-full max-w-2xl mx-auto">
+      <motion.div
+        className="relative z-10 flex h-full max-w-2xl mx-auto"
+        initial={false}
+        animate={{ x: lyricsOpen ? "-42%" : "0%" }}
+        transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
+      >
         {/* Left: album art column */}
         <div className="flex flex-col items-center justify-center p-8 gap-4" style={{ width: 280, borderRight: `2px solid rgba(${accentColor},0.2)` }}>
           <div style={{ width: 220, height: 220, position: "relative", border: `2px solid rgb(${accentColor})`, boxShadow:`0 0 30px rgb(${accentColor}), inset 0 0 30px rgba(${accentColor},0.1)`, overflow: "hidden" }}>
@@ -7379,7 +7394,7 @@ function FullscreenUnique(props: FullscreenSharedProps) {
             {liked?"LIKED":"LIKE"}
           </button>}
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }
