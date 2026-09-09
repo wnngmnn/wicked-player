@@ -6659,6 +6659,7 @@ interface FullscreenSharedProps {
   toggleLike?: (pid: string, tid: string) => void;
   fsBg?: FsBgConfig;
   analyserRef?: React.MutableRefObject<AnalyserNode | null>;
+  lyricsOpen?: boolean;
 }
 
 // ── Shared fullscreen background layer ─────────────────────────────────────
@@ -6811,7 +6812,7 @@ function FsBtn({
 }
 
 function FullscreenModern(props: FullscreenSharedProps) {
-  const { project, track, player, onTogglePlay, onSeek, onVolume, onPrev, onNext, onShuffle, onClose, accentColor, liked, toggleLike, fsBg, analyserRef } = props;
+  const { project, track, player, onTogglePlay, onSeek, onVolume, onPrev, onNext, onShuffle, onClose, accentColor, liked, toggleLike, fsBg, analyserRef, lyricsOpen } = props;
   const hasCover = !!project.coverDataUrl;
   const progress = player.duration > 0 ? player.currentTime / player.duration : 0;
   const [scrubHover, setScrubHover] = useState(false);
@@ -6837,8 +6838,11 @@ function FullscreenModern(props: FullscreenSharedProps) {
       />
 
       {/* Liquid glass card */}
-      <div
+      <motion.div
         className="relative z-10 w-full max-w-md mx-4 flex flex-col items-center animate-app-scale-in"
+        initial={false}
+        animate={{ x: lyricsOpen ? "-58%" : "0%", scale: lyricsOpen ? 0.92 : 1 }}
+        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
         style={{
           background: "linear-gradient(180deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.04) 100%)",
           backdropFilter: "blur(60px) saturate(220%)",
@@ -7018,14 +7022,14 @@ function FullscreenModern(props: FullscreenSharedProps) {
             <Volume2 size={14} />
           </button>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }
 
 
 function FullscreenClassic(props: FullscreenSharedProps) {
-  const { project, track, player, onTogglePlay, onSeek, onVolume, onPrev, onNext, onShuffle, onClose, liked, toggleLike } = props;
+  const { project, track, player, onTogglePlay, onSeek, onVolume, onPrev, onNext, onShuffle, onClose, liked, toggleLike, lyricsOpen } = props;
   const hasCover = !!project.coverDataUrl;
   const progress = player.duration > 0 ? player.currentTime / player.duration : 0;
   const CYAN = "#00c8ff", BLUE = "#1e8fef", DEEP = "#0a4fb0";
@@ -7182,7 +7186,13 @@ function FullscreenClassic(props: FullscreenSharedProps) {
         </div>
 
         {/* RIGHT: info + controls */}
-        <div className="flex-1 flex flex-col justify-center px-12 gap-8" style={{ minWidth: 0 }}>
+        <motion.div
+          className="flex-1 flex flex-col justify-center px-12 gap-8"
+          style={{ minWidth: 0 }}
+          initial={false}
+          animate={{ opacity: lyricsOpen ? 0 : 1, x: lyricsOpen ? -24 : 0 }}
+          transition={{ duration: 0.32 }}
+        >
 
           {/* Track info — Aero glass panel */}
           <div style={{
@@ -7268,7 +7278,7 @@ function FullscreenClassic(props: FullscreenSharedProps) {
             <input type="range" min={0} max={1} step={0.01} value={player.volume} onChange={e => onVolume(Number(e.target.value))} style={{ flex: 1, accentColor: CYAN, cursor: "pointer" }} />
             <span style={{ fontSize: 12, color: "#a8dcff", minWidth: 36, fontVariantNumeric: "tabular-nums" }}>{Math.round(player.volume * 100)}%</span>
           </div>
-        </div>
+        </motion.div>
       </div>
 
       {/* Aero status bar */}
@@ -7303,7 +7313,7 @@ function FullscreenClassic(props: FullscreenSharedProps) {
 
 
 function FullscreenUnique(props: FullscreenSharedProps) {
-  const { project, track, player, onTogglePlay, onSeek, onVolume, onPrev, onNext, onShuffle, onClose, accentColor, liked, toggleLike } = props;
+  const { project, track, player, onTogglePlay, onSeek, onVolume, onPrev, onNext, onShuffle, onClose, accentColor, liked, toggleLike, lyricsOpen } = props;
   const hasCover = !!project.coverDataUrl;
   const progress = player.duration > 0 ? player.currentTime / player.duration : 0;
   return (
@@ -7317,7 +7327,12 @@ function FullscreenUnique(props: FullscreenSharedProps) {
         <div key={i} className={`absolute ${pos} w-12 h-12`} style={{ border:`2px solid rgb(${accentColor})`, borderRight:i%2===0?"none":"2px solid", borderLeft:i%2===0?"2px solid":"none", borderBottom:i<2?"none":"2px solid", borderTop:i<2?"2px solid":"none", opacity:0.6 }} />
       ))}
       {/* Content */}
-      <div className="relative z-10 flex h-full max-w-2xl mx-auto">
+      <motion.div
+        className="relative z-10 flex h-full max-w-2xl mx-auto"
+        initial={false}
+        animate={{ x: lyricsOpen ? "-42%" : "0%" }}
+        transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
+      >
         {/* Left: album art column */}
         <div className="flex flex-col items-center justify-center p-8 gap-4" style={{ width: 280, borderRight: `2px solid rgba(${accentColor},0.2)` }}>
           <div style={{ width: 220, height: 220, position: "relative", border: `2px solid rgb(${accentColor})`, boxShadow:`0 0 30px rgb(${accentColor}), inset 0 0 30px rgba(${accentColor},0.1)`, overflow: "hidden" }}>
@@ -7379,7 +7394,7 @@ function FullscreenUnique(props: FullscreenSharedProps) {
             {liked?"LIKED":"LIKE"}
           </button>}
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }
@@ -7413,10 +7428,50 @@ function FullscreenScrubber({
 
 function FullscreenPlayer(props: React.ComponentProps<typeof FullscreenPlayerInner>) {
   const [showLyrics, setShowLyrics] = useState(false);
-  const { track } = props;
+  const { track, layoutTheme = "default" } = props;
   useEffect(() => { setShowLyrics(false); }, [track.id]);
 
   const lines = (track.lyrics ?? "").split(/\n/);
+  const isModernLyrics = layoutTheme === "modern";
+  const isClassicLyrics = layoutTheme === "classic";
+  const isUniqueLyrics = layoutTheme === "unique";
+  const lyricsPanelStyle: React.CSSProperties = isModernLyrics
+    ? {
+        width: "50%",
+        background: "linear-gradient(135deg, rgba(255,255,255,0.11), rgba(255,255,255,0.035))",
+        backdropFilter: "blur(42px) saturate(180%)",
+        WebkitBackdropFilter: "blur(42px) saturate(180%)",
+        borderLeft: "1px solid rgba(255,255,255,0.13)",
+        maskImage: "linear-gradient(180deg, transparent 0%, #000 11%, #000 84%, transparent 100%)",
+        WebkitMaskImage: "linear-gradient(180deg, transparent 0%, #000 11%, #000 84%, transparent 100%)",
+      }
+    : isClassicLyrics
+      ? {
+          width: "calc(100% - 400px)",
+          top: 39,
+          bottom: 28,
+          background: "linear-gradient(180deg, rgba(205,238,255,0.3), rgba(18,75,160,0.48))",
+          backdropFilter: "blur(22px) saturate(160%)",
+          WebkitBackdropFilter: "blur(22px) saturate(160%)",
+          borderLeft: "1px solid rgba(210,242,255,0.48)",
+          boxShadow: "inset 1px 0 rgba(255,255,255,0.25), -12px 0 40px rgba(0,35,100,0.25)",
+          fontFamily: "'Segoe UI',Tahoma,system-ui,sans-serif",
+        }
+      : isUniqueLyrics
+        ? {
+            width: "52%",
+            background: "rgba(1,1,8,0.88)",
+            borderLeft: "2px solid var(--primary)",
+            boxShadow: "-16px 0 48px color-mix(in srgb, var(--primary) 18%, transparent)",
+            fontFamily: "'SF Mono','Fira Code',monospace",
+            maskImage: "linear-gradient(180deg, transparent 0%, #000 10%, #000 87%, transparent 100%)",
+            WebkitMaskImage: "linear-gradient(180deg, transparent 0%, #000 10%, #000 87%, transparent 100%)",
+          }
+        : {
+            width: "52%",
+            maskImage: "linear-gradient(180deg, transparent 0%, #000 10%, #000 82%, transparent 100%)",
+            WebkitMaskImage: "linear-gradient(180deg, transparent 0%, #000 10%, #000 82%, transparent 100%)",
+          };
 
   return (
     <>
@@ -7424,8 +7479,12 @@ function FullscreenPlayer(props: React.ComponentProps<typeof FullscreenPlayerInn
 
       <button
         onClick={() => setShowLyrics(v => !v)}
-        className="fixed top-5 right-6 z-[210] flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-widest text-white/85 hover:text-white transition-colors"
-        style={{ background: showLyrics ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.10)" }}
+        className={`fixed z-[210] flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest transition-all ${isClassicLyrics ? "top-1.5 right-28 rounded-md text-white" : isUniqueLyrics ? "top-5 right-6 rounded-none text-primary" : "top-5 right-6 rounded-lg text-white/85 hover:text-white"}`}
+        style={isClassicLyrics
+          ? { background: showLyrics ? "linear-gradient(180deg,#9de8ff,#1679d5)" : "linear-gradient(180deg,rgba(220,245,255,.55),rgba(45,110,190,.55))", border: "1px solid rgba(210,240,255,.6)", boxShadow: "inset 0 1px rgba(255,255,255,.6),0 2px 7px rgba(0,25,80,.45)" }
+          : isUniqueLyrics
+            ? { background: showLyrics ? "color-mix(in srgb, var(--primary) 18%, transparent)" : "rgba(1,1,8,.72)", border: "1px solid currentColor", boxShadow: showLyrics ? "0 0 16px currentColor" : "none" }
+            : { background: showLyrics ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.10)", backdropFilter: isModernLyrics ? "blur(20px) saturate(180%)" : undefined, border: isModernLyrics ? "1px solid rgba(255,255,255,.14)" : undefined }}
         aria-label="Toggle lyrics"
       >
         <FileText size={13} /> Lyrics
@@ -7436,13 +7495,15 @@ function FullscreenPlayer(props: React.ComponentProps<typeof FullscreenPlayerInn
           <motion.div
             initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 40 }}
             transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-            className="fixed top-0 right-0 bottom-0 z-[205] w-[52%] overflow-y-auto text-white max-md:w-full max-md:bg-black/55"
-            style={{
-              maskImage: "linear-gradient(180deg, transparent 0%, #000 10%, #000 82%, transparent 100%)",
-              WebkitMaskImage: "linear-gradient(180deg, transparent 0%, #000 10%, #000 82%, transparent 100%)",
-            }}
+            className="fixed top-0 right-0 bottom-0 z-[205] overflow-y-auto text-white max-md:w-full max-md:bg-black/55"
+            style={lyricsPanelStyle}
           >
-            <div className="pl-[7%] pr-[10%] py-[31vh] max-w-[760px]">
+            <div className={`${isClassicLyrics ? "px-12 py-[25vh]" : isUniqueLyrics ? "px-12 py-[28vh]" : isModernLyrics ? "px-[10%] py-[29vh]" : "pl-[7%] pr-[10%] py-[31vh]"} max-w-[760px]`}>
+              {(isClassicLyrics || isUniqueLyrics) && (
+                <div className={`mb-8 text-xs font-bold uppercase tracking-widest ${isClassicLyrics ? "text-cyan-100/80" : "text-primary"}`}>
+                  {isClassicLyrics ? "Lyrics" : "// LYRICS_STREAM"}
+                </div>
+              )}
               {track.lyrics ? (
                 lines.map((line, i) => (
                   line.trim() === "" ? (
@@ -7450,7 +7511,7 @@ function FullscreenPlayer(props: React.ComponentProps<typeof FullscreenPlayerInn
                   ) : (
                     <p
                       key={i}
-                      className={`text-[clamp(28px,3vw,44px)] leading-[1.12] font-extrabold mb-7 transition-colors duration-300 cursor-default ${i === 0 ? "text-white" : "text-white/25 hover:text-white/85"}`}
+                      className={`${isClassicLyrics ? "text-[clamp(24px,2.5vw,36px)] leading-[1.2] font-semibold mb-5" : isUniqueLyrics ? "text-[clamp(20px,2.2vw,32px)] leading-[1.35] font-bold mb-6 uppercase" : isModernLyrics ? "text-[clamp(30px,3.2vw,46px)] leading-[1.1] font-bold mb-8" : "text-[clamp(28px,3vw,44px)] leading-[1.12] font-extrabold mb-7"} transition-colors duration-300 cursor-default ${i === 0 ? (isUniqueLyrics ? "text-primary" : "text-white") : isClassicLyrics ? "text-cyan-50/35 hover:text-white/90" : isUniqueLyrics ? "text-primary/30 hover:text-primary/90" : "text-white/25 hover:text-white/85"}`}
                     >
                       {line}
                     </p>
@@ -7512,7 +7573,7 @@ function FullscreenPlayerInner({
     project, track, player,
     onTogglePlay, onSeek, onVolume, onPrev, onNext, onShuffle, onClose,
     accentColor, liked,
-    toggleLike, fsBg, analyserRef,
+    toggleLike, fsBg, analyserRef, lyricsOpen,
   };
 
   if (layoutTheme === "modern") return <FullscreenModern {...sharedProps} />;
