@@ -7436,13 +7436,13 @@ function FullscreenPlayer(props: React.ComponentProps<typeof FullscreenPlayerInn
           <motion.div
             initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 40 }}
             transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-            className="fixed top-0 right-0 bottom-0 z-[205] w-1/2 overflow-y-auto text-white"
+            className="fixed top-0 right-0 bottom-0 z-[205] w-[52%] overflow-y-auto text-white max-md:w-full max-md:bg-black/55"
             style={{
               maskImage: "linear-gradient(180deg, transparent 0%, #000 10%, #000 82%, transparent 100%)",
               WebkitMaskImage: "linear-gradient(180deg, transparent 0%, #000 10%, #000 82%, transparent 100%)",
             }}
           >
-            <div className="pl-4 pr-14 py-[34vh] max-w-[680px]">
+            <div className="pl-[7%] pr-[10%] py-[31vh] max-w-[760px]">
               {track.lyrics ? (
                 lines.map((line, i) => (
                   line.trim() === "" ? (
@@ -7450,7 +7450,7 @@ function FullscreenPlayer(props: React.ComponentProps<typeof FullscreenPlayerInn
                   ) : (
                     <p
                       key={i}
-                      className={`text-[40px] leading-[1.14] font-extrabold tracking-tight mb-6 transition-colors duration-300 cursor-default ${i === 0 ? "text-white" : "text-white/30 hover:text-white/90"}`}
+                      className={`text-[clamp(28px,3vw,44px)] leading-[1.12] font-extrabold mb-7 transition-colors duration-300 cursor-default ${i === 0 ? "text-white" : "text-white/25 hover:text-white/85"}`}
                     >
                       {line}
                     </p>
@@ -7528,10 +7528,14 @@ function FullscreenPlayerInner({
         <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(0,0,0,0.25) 0%, rgba(0,0,0,0.55) 100%)" }} />
       </div>
 
-      {/* ── Content — pushed to the left half while lyrics are open ── */}
+      {/* ── Content — stays full-size and moves left when lyrics open ── */}
       <motion.div
-        className="relative z-10 flex flex-col h-full text-white max-w-xl mx-auto w-full px-8 pb-10"
-        animate={{ paddingRight: lyricsOpen ? "calc(50% - 288px)" : "32px" }}
+        className="absolute z-10 top-0 bottom-0 flex flex-col text-white w-[min(88vw,560px)] px-8 pb-8 max-md:w-full"
+        initial={false}
+        animate={{
+          left: lyricsOpen ? "5.5%" : "50%",
+          x: lyricsOpen ? "0%" : "-50%",
+        }}
         transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
       >
 
@@ -7557,7 +7561,7 @@ function FullscreenPlayerInner({
           <div
             className="relative aspect-square overflow-hidden rounded-xl transition-transform duration-500 ease-out"
             style={{
-              width: "min(100%, 460px)",
+              width: "min(100%, 480px, 54vh)",
               maxHeight: "100%",
               boxShadow: "0 30px 80px rgba(0,0,0,0.65), 0 10px 30px rgba(0,0,0,0.4)",
               transform: player.isPlaying ? "scale(1)" : "scale(0.86)",
