@@ -7524,7 +7524,7 @@ function FullscreenPlayerInner({
   project, track, player,
   onTogglePlay, onSeek, onVolume, onPrev, onNext, onShuffle, onClose,
   toggleLike, isLiked, layoutTheme = "default" as LayoutTheme,
-  fsBg, analyserRef, lyricsOpen = false,
+  fsBg, analyserRef, lyricsOpen = false, onToggleLyrics,
 }: {
   project: Project; track: Track; player: PlayerState;
   onTogglePlay: () => void; onSeek: (t: number) => void; onVolume: (v: number) => void;
@@ -7535,6 +7535,7 @@ function FullscreenPlayerInner({
   fsBg?: FsBgConfig;
   analyserRef?: React.MutableRefObject<AnalyserNode | null>;
   lyricsOpen?: boolean;
+  onToggleLyrics?: () => void;
 }) {
   const [accentColor, setAccentColor] = useState("20,20,40");
 
