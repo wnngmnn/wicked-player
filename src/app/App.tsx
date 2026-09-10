@@ -7562,7 +7562,7 @@ function FullscreenPlayerInner({
     project, track, player,
     onTogglePlay, onSeek, onVolume, onPrev, onNext, onShuffle, onClose,
     accentColor, liked,
-    toggleLike, fsBg, analyserRef, lyricsOpen,
+    toggleLike, fsBg, analyserRef, lyricsOpen, onToggleLyrics,
   };
 
   if (layoutTheme === "modern") return <FullscreenModern {...sharedProps} />;
