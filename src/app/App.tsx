@@ -6660,6 +6660,7 @@ interface FullscreenSharedProps {
   fsBg?: FsBgConfig;
   analyserRef?: React.MutableRefObject<AnalyserNode | null>;
   lyricsOpen?: boolean;
+  onToggleLyrics?: () => void;
 }
 
 // ── Shared fullscreen background layer ─────────────────────────────────────
@@ -7003,7 +7004,21 @@ function FullscreenModern(props: FullscreenSharedProps) {
           >
             <IconNext size={32} />
           </button>
-          <div style={{ width: 40 }} />
+          <button
+            onClick={props.onToggleLyrics}
+            className="transition-all duration-200 hover:scale-110 active:scale-90"
+            style={{
+              width: 40, height: 40, display: "flex", alignItems: "center", justifyContent: "center",
+              borderRadius: 9999,
+              background: props.lyricsOpen ? "rgba(255,255,255,0.18)" : "transparent",
+              color: props.lyricsOpen ? "#fff" : "rgba(255,255,255,0.45)",
+              border: props.lyricsOpen ? "1px solid rgba(255,255,255,0.16)" : "1px solid transparent",
+            }}
+            aria-label="Toggle lyrics"
+            title="Toggle lyrics"
+          >
+            <FileText size={17} />
+          </button>
         </div>
 
         {/* Volume */}
@@ -7267,7 +7282,7 @@ function FullscreenClassic(props: FullscreenSharedProps) {
               {player.isPlaying ? <Pause size={26} fill="currentColor" strokeWidth={0} /> : <Play size={26} fill="currentColor" strokeWidth={0} style={{ marginLeft: 3 }} />}
             </AeroOrb>
             <AeroOrb onClick={onNext} size={46}><SkipForward size={20} fill="currentColor" strokeWidth={0} /></AeroOrb>
-            <AeroOrb size={38}><Volume2 size={15} /></AeroOrb>
+            <AeroOrb onClick={props.onToggleLyrics} active={props.lyricsOpen} size={38}><FileText size={15} /></AeroOrb>
           </div>
 
           {/* Volume */}
@@ -7376,6 +7391,7 @@ function FullscreenUnique(props: FullscreenSharedProps) {
               {icon:<SkipBack size={18} fill="currentColor" strokeWidth={0}/>, action:onPrev, label:"PREV"},
               {icon:player.isPlaying?<Pause size={22} fill="currentColor" strokeWidth={0}/>:<Play size={22} fill="currentColor" strokeWidth={0}/>, action:onTogglePlay, label:player.isPlaying?"PAUS":"PLAY", big:true},
               {icon:<SkipForward size={18} fill="currentColor" strokeWidth={0}/>, action:onNext, label:"NEXT"},
+              {icon:<FileText size={16}/>, action:props.onToggleLyrics, active:props.lyricsOpen, label:"LYRICS"},
             ].map((btn,i)=>(
               <button key={i} onClick={btn.action} style={{ flex:btn.big?2:1, padding:"10px 0", background:"transparent", border:`1px solid ${btn.active||btn.big?`rgb(${accentColor})`:`rgba(255,255,255,0.15)`}`, color:btn.active||btn.big?`rgb(${accentColor})`:"rgba(255,255,255,0.6)", cursor:"pointer", display:"flex", flexDirection:"column", alignItems:"center", gap:3, boxShadow:btn.big||btn.active?`0 0 16px rgba(${accentColor},0.3)`:undefined, letterSpacing:"0.1em" }}>
                 {btn.icon}
@@ -7475,20 +7491,7 @@ function FullscreenPlayer(props: React.ComponentProps<typeof FullscreenPlayerInn
 
   return (
     <>
-      <FullscreenPlayerInner {...props} lyricsOpen={showLyrics} />
-
-      <button
-        onClick={() => setShowLyrics(v => !v)}
-        className={`fixed z-[210] flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest transition-all ${isClassicLyrics ? "top-1.5 right-28 rounded-md text-white" : isUniqueLyrics ? "top-5 right-6 rounded-none text-primary" : "top-5 right-6 rounded-lg text-white/85 hover:text-white"}`}
-        style={isClassicLyrics
-          ? { background: showLyrics ? "linear-gradient(180deg,#9de8ff,#1679d5)" : "linear-gradient(180deg,rgba(220,245,255,.55),rgba(45,110,190,.55))", border: "1px solid rgba(210,240,255,.6)", boxShadow: "inset 0 1px rgba(255,255,255,.6),0 2px 7px rgba(0,25,80,.45)" }
-          : isUniqueLyrics
-            ? { background: showLyrics ? "color-mix(in srgb, var(--primary) 18%, transparent)" : "rgba(1,1,8,.72)", border: "1px solid currentColor", boxShadow: showLyrics ? "0 0 16px currentColor" : "none" }
-            : { background: showLyrics ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.10)", backdropFilter: isModernLyrics ? "blur(20px) saturate(180%)" : undefined, border: isModernLyrics ? "1px solid rgba(255,255,255,.14)" : undefined }}
-        aria-label="Toggle lyrics"
-      >
-        <FileText size={13} /> Lyrics
-      </button>
+      <FullscreenPlayerInner {...props} lyricsOpen={showLyrics} onToggleLyrics={() => setShowLyrics(v => !v)} />
 
       <AnimatePresence>
         {showLyrics && (
@@ -7536,7 +7539,7 @@ function FullscreenPlayerInner({
   project, track, player,
   onTogglePlay, onSeek, onVolume, onPrev, onNext, onShuffle, onClose,
   toggleLike, isLiked, layoutTheme = "default" as LayoutTheme,
-  fsBg, analyserRef, lyricsOpen = false,
+  fsBg, analyserRef, lyricsOpen = false, onToggleLyrics,
 }: {
   project: Project; track: Track; player: PlayerState;
   onTogglePlay: () => void; onSeek: (t: number) => void; onVolume: (v: number) => void;
@@ -7547,6 +7550,7 @@ function FullscreenPlayerInner({
   fsBg?: FsBgConfig;
   analyserRef?: React.MutableRefObject<AnalyserNode | null>;
   lyricsOpen?: boolean;
+  onToggleLyrics?: () => void;
 }) {
   const [accentColor, setAccentColor] = useState("20,20,40");
 
@@ -7573,7 +7577,7 @@ function FullscreenPlayerInner({
     project, track, player,
     onTogglePlay, onSeek, onVolume, onPrev, onNext, onShuffle, onClose,
     accentColor, liked,
-    toggleLike, fsBg, analyserRef, lyricsOpen,
+    toggleLike, fsBg, analyserRef, lyricsOpen, onToggleLyrics,
   };
 
   if (layoutTheme === "modern") return <FullscreenModern {...sharedProps} />;
@@ -7672,7 +7676,7 @@ function FullscreenPlayerInner({
         </div>
 
         {/* Main controls — big square play, prev/next flanking */}
-        <div className="flex items-center justify-center gap-14 mb-8">
+        <div className="flex items-center justify-center gap-10 mb-8">
           <button
             onClick={onPrev}
             disabled={player.queuePos === 0 && !player.shuffle}
@@ -7696,6 +7700,14 @@ function FullscreenPlayerInner({
             aria-label="Next"
           >
             <IconNext size={40} />
+          </button>
+          <button
+            onClick={onToggleLyrics}
+            className={`w-11 h-11 flex items-center justify-center rounded-full transition-all duration-200 active:scale-90 ${lyricsOpen ? "text-white bg-white/18" : "text-white/60 hover:text-white hover:bg-white/10"}`}
+            aria-label="Toggle lyrics"
+            title="Toggle lyrics"
+          >
+            <FileText size={20} />
           </button>
         </div>
 
