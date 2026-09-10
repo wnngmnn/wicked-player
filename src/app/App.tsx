@@ -7476,20 +7476,7 @@ function FullscreenPlayer(props: React.ComponentProps<typeof FullscreenPlayerInn
 
   return (
     <>
-      <FullscreenPlayerInner {...props} lyricsOpen={showLyrics} />
-
-      <button
-        onClick={() => setShowLyrics(v => !v)}
-        className={`fixed z-[210] flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest transition-all ${isClassicLyrics ? "top-1.5 right-28 rounded-md text-white" : isUniqueLyrics ? "top-5 right-6 rounded-none text-primary" : "top-5 right-6 rounded-lg text-white/85 hover:text-white"}`}
-        style={isClassicLyrics
-          ? { background: showLyrics ? "linear-gradient(180deg,#9de8ff,#1679d5)" : "linear-gradient(180deg,rgba(220,245,255,.55),rgba(45,110,190,.55))", border: "1px solid rgba(210,240,255,.6)", boxShadow: "inset 0 1px rgba(255,255,255,.6),0 2px 7px rgba(0,25,80,.45)" }
-          : isUniqueLyrics
-            ? { background: showLyrics ? "color-mix(in srgb, var(--primary) 18%, transparent)" : "rgba(1,1,8,.72)", border: "1px solid currentColor", boxShadow: showLyrics ? "0 0 16px currentColor" : "none" }
-            : { background: showLyrics ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.10)", backdropFilter: isModernLyrics ? "blur(20px) saturate(180%)" : undefined, border: isModernLyrics ? "1px solid rgba(255,255,255,.14)" : undefined }}
-        aria-label="Toggle lyrics"
-      >
-        <FileText size={13} /> Lyrics
-      </button>
+      <FullscreenPlayerInner {...props} lyricsOpen={showLyrics} onToggleLyrics={() => setShowLyrics(v => !v)} />
 
       <AnimatePresence>
         {showLyrics && (
