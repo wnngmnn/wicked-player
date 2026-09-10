@@ -6660,6 +6660,7 @@ interface FullscreenSharedProps {
   fsBg?: FsBgConfig;
   analyserRef?: React.MutableRefObject<AnalyserNode | null>;
   lyricsOpen?: boolean;
+  onToggleLyrics?: () => void;
 }
 
 // ── Shared fullscreen background layer ─────────────────────────────────────
