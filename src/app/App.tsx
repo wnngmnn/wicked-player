@@ -7391,6 +7391,7 @@ function FullscreenUnique(props: FullscreenSharedProps) {
               {icon:<SkipBack size={18} fill="currentColor" strokeWidth={0}/>, action:onPrev, label:"PREV"},
               {icon:player.isPlaying?<Pause size={22} fill="currentColor" strokeWidth={0}/>:<Play size={22} fill="currentColor" strokeWidth={0}/>, action:onTogglePlay, label:player.isPlaying?"PAUS":"PLAY", big:true},
               {icon:<SkipForward size={18} fill="currentColor" strokeWidth={0}/>, action:onNext, label:"NEXT"},
+              {icon:<FileText size={16}/>, action:props.onToggleLyrics, active:props.lyricsOpen, label:"LYRICS"},
             ].map((btn,i)=>(
               <button key={i} onClick={btn.action} style={{ flex:btn.big?2:1, padding:"10px 0", background:"transparent", border:`1px solid ${btn.active||btn.big?`rgb(${accentColor})`:`rgba(255,255,255,0.15)`}`, color:btn.active||btn.big?`rgb(${accentColor})`:"rgba(255,255,255,0.6)", cursor:"pointer", display:"flex", flexDirection:"column", alignItems:"center", gap:3, boxShadow:btn.big||btn.active?`0 0 16px rgba(${accentColor},0.3)`:undefined, letterSpacing:"0.1em" }}>
                 {btn.icon}
