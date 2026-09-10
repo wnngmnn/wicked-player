@@ -7282,7 +7282,7 @@ function FullscreenClassic(props: FullscreenSharedProps) {
               {player.isPlaying ? <Pause size={26} fill="currentColor" strokeWidth={0} /> : <Play size={26} fill="currentColor" strokeWidth={0} style={{ marginLeft: 3 }} />}
             </AeroOrb>
             <AeroOrb onClick={onNext} size={46}><SkipForward size={20} fill="currentColor" strokeWidth={0} /></AeroOrb>
-            <AeroOrb size={38}><Volume2 size={15} /></AeroOrb>
+            <AeroOrb onClick={props.onToggleLyrics} active={props.lyricsOpen} size={38}><FileText size={15} /></AeroOrb>
           </div>
 
           {/* Volume */}
