@@ -7004,7 +7004,21 @@ function FullscreenModern(props: FullscreenSharedProps) {
           >
             <IconNext size={32} />
           </button>
-          <div style={{ width: 40 }} />
+          <button
+            onClick={props.onToggleLyrics}
+            className="transition-all duration-200 hover:scale-110 active:scale-90"
+            style={{
+              width: 40, height: 40, display: "flex", alignItems: "center", justifyContent: "center",
+              borderRadius: 9999,
+              background: props.lyricsOpen ? "rgba(255,255,255,0.18)" : "transparent",
+              color: props.lyricsOpen ? "#fff" : "rgba(255,255,255,0.45)",
+              border: props.lyricsOpen ? "1px solid rgba(255,255,255,0.16)" : "1px solid transparent",
+            }}
+            aria-label="Toggle lyrics"
+            title="Toggle lyrics"
+          >
+            <FileText size={17} />
+          </button>
         </div>
 
         {/* Volume */}
