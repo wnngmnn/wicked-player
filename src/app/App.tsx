@@ -7675,7 +7675,7 @@ function FullscreenPlayerInner({
         </div>
 
         {/* Main controls — big square play, prev/next flanking */}
-        <div className="flex items-center justify-center gap-14 mb-8">
+        <div className="flex items-center justify-center gap-10 mb-8">
           <button
             onClick={onPrev}
             disabled={player.queuePos === 0 && !player.shuffle}
@@ -7699,6 +7699,14 @@ function FullscreenPlayerInner({
             aria-label="Next"
           >
             <IconNext size={40} />
+          </button>
+          <button
+            onClick={onToggleLyrics}
+            className={`w-11 h-11 flex items-center justify-center rounded-full transition-all duration-200 active:scale-90 ${lyricsOpen ? "text-white bg-white/18" : "text-white/60 hover:text-white hover:bg-white/10"}`}
+            aria-label="Toggle lyrics"
+            title="Toggle lyrics"
+          >
+            <FileText size={20} />
           </button>
         </div>
 
