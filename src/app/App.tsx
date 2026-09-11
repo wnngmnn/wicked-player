@@ -6880,7 +6880,7 @@ function FullscreenModern(props: FullscreenSharedProps) {
         <div
           className="transition-transform duration-500 ease-out"
           style={{
-            width: "100%", maxWidth: 260, aspectRatio: "1",
+            width: "min(100%, 260px, 30vh)", aspectRatio: "1", flexShrink: 0,
             borderRadius: "1.5rem", overflow: "hidden",
             boxShadow: `0 28px 70px rgba(${accentColor},0.45), 0 12px 30px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(255,255,255,0.10)`,
             marginBottom: "0.5rem",
