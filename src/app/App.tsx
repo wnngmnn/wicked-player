@@ -6840,7 +6840,7 @@ function FullscreenModern(props: FullscreenSharedProps) {
 
       {/* Liquid glass card */}
       <motion.div
-        className="z-10 w-full max-w-md flex flex-col items-center animate-app-scale-in"
+        className="z-10 w-full max-w-md flex flex-col items-center animate-app-scale-in overflow-y-auto overflow-x-hidden"
         initial={false}
         animate={{ left: lyricsOpen ? "4.5%" : "50%", x: lyricsOpen ? "0%" : "-50%" }}
         transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
@@ -6848,6 +6848,7 @@ function FullscreenModern(props: FullscreenSharedProps) {
           position: "absolute",
           top: "50%",
           y: "-50%",
+          maxHeight: "94vh",
           background: "linear-gradient(180deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.04) 100%)",
           backdropFilter: "blur(60px) saturate(220%)",
           WebkitBackdropFilter: "blur(60px) saturate(220%)",
@@ -6879,7 +6880,7 @@ function FullscreenModern(props: FullscreenSharedProps) {
         <div
           className="transition-transform duration-500 ease-out"
           style={{
-            width: "100%", maxWidth: 260, aspectRatio: "1",
+            width: "min(100%, 260px, 30vh)", aspectRatio: "1", flexShrink: 0,
             borderRadius: "1.5rem", overflow: "hidden",
             boxShadow: `0 28px 70px rgba(${accentColor},0.45), 0 12px 30px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(255,255,255,0.10)`,
             marginBottom: "0.5rem",
