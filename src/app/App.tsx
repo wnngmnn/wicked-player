@@ -6840,11 +6840,14 @@ function FullscreenModern(props: FullscreenSharedProps) {
 
       {/* Liquid glass card */}
       <motion.div
-        className="relative z-10 w-full max-w-md mx-4 flex flex-col items-center animate-app-scale-in"
+        className="z-10 w-full max-w-md flex flex-col items-center animate-app-scale-in"
         initial={false}
-        animate={{ x: lyricsOpen ? "-58%" : "0%", scale: lyricsOpen ? 0.92 : 1 }}
+        animate={{ left: lyricsOpen ? "4.5%" : "50%", x: lyricsOpen ? "0%" : "-50%" }}
         transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
         style={{
+          position: "absolute",
+          top: "50%",
+          y: "-50%",
           background: "linear-gradient(180deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.04) 100%)",
           backdropFilter: "blur(60px) saturate(220%)",
           WebkitBackdropFilter: "blur(60px) saturate(220%)",
