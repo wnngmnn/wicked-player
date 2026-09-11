@@ -7020,7 +7020,7 @@ function FullscreenModern(props: FullscreenSharedProps) {
             aria-label="Toggle lyrics"
             title="Toggle lyrics"
           >
-            <FileText size={17} />
+            <MicVocal size={17} />
           </button>
         </div>
 
@@ -7285,7 +7285,7 @@ function FullscreenClassic(props: FullscreenSharedProps) {
               {player.isPlaying ? <Pause size={26} fill="currentColor" strokeWidth={0} /> : <Play size={26} fill="currentColor" strokeWidth={0} style={{ marginLeft: 3 }} />}
             </AeroOrb>
             <AeroOrb onClick={onNext} size={46}><SkipForward size={20} fill="currentColor" strokeWidth={0} /></AeroOrb>
-            <AeroOrb onClick={props.onToggleLyrics} active={props.lyricsOpen} size={38}><FileText size={15} /></AeroOrb>
+            <AeroOrb onClick={props.onToggleLyrics} active={props.lyricsOpen} size={38}><MicVocal size={15} /></AeroOrb>
           </div>
 
           {/* Volume */}
@@ -7346,10 +7346,14 @@ function FullscreenUnique(props: FullscreenSharedProps) {
       ))}
       {/* Content */}
       <motion.div
-        className="relative z-10 flex h-full max-w-2xl mx-auto"
+        className="relative z-10 flex h-full max-w-2xl"
         initial={false}
-        animate={{ x: lyricsOpen ? "-42%" : "0%" }}
-        transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
+        animate={{ x: 0 }}
+        style={{
+          marginLeft: lyricsOpen ? "2vw" : "auto",
+          marginRight: "auto",
+          transition: "margin-left 420ms cubic-bezier(0.22,1,0.36,1)",
+        }}
       >
         {/* Left: album art column */}
         <div className="flex flex-col items-center justify-center p-8 gap-4" style={{ width: 280, borderRight: `2px solid rgba(${accentColor},0.2)` }}>
