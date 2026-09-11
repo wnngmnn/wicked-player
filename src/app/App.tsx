@@ -7,7 +7,7 @@ import {
   Music, Shuffle, ImagePlus, Link2, ListMusic,
   Library, User, Settings, PanelLeftClose, PanelLeftOpen, Home,
   Search, GripVertical, LayoutList, Maximize2, ChevronDown, ArrowUpDown,
-  Heart, Star, Globe, Lock, Unlock, Calendar, Tag, FileText
+  Heart, Star, Globe, Lock, Unlock, Calendar, Tag, FileText, MicVocal
 } from "lucide-react";
 import StatsPanel from "./StatsPanel";
 import { recordListen, recordPlay, flushStats } from "./stats";
@@ -6840,11 +6840,14 @@ function FullscreenModern(props: FullscreenSharedProps) {
 
       {/* Liquid glass card */}
       <motion.div
-        className="relative z-10 w-full max-w-md mx-4 flex flex-col items-center animate-app-scale-in"
+        className="z-10 w-full max-w-md flex flex-col items-center animate-app-scale-in"
         initial={false}
-        animate={{ x: lyricsOpen ? "-58%" : "0%", scale: lyricsOpen ? 0.92 : 1 }}
+        animate={{ left: lyricsOpen ? "4.5%" : "50%", x: lyricsOpen ? "0%" : "-50%" }}
         transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
         style={{
+          position: "absolute",
+          top: "50%",
+          y: "-50%",
           background: "linear-gradient(180deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.04) 100%)",
           backdropFilter: "blur(60px) saturate(220%)",
           WebkitBackdropFilter: "blur(60px) saturate(220%)",
@@ -7017,7 +7020,7 @@ function FullscreenModern(props: FullscreenSharedProps) {
             aria-label="Toggle lyrics"
             title="Toggle lyrics"
           >
-            <FileText size={17} />
+            <MicVocal size={17} />
           </button>
         </div>
 
@@ -7282,7 +7285,7 @@ function FullscreenClassic(props: FullscreenSharedProps) {
               {player.isPlaying ? <Pause size={26} fill="currentColor" strokeWidth={0} /> : <Play size={26} fill="currentColor" strokeWidth={0} style={{ marginLeft: 3 }} />}
             </AeroOrb>
             <AeroOrb onClick={onNext} size={46}><SkipForward size={20} fill="currentColor" strokeWidth={0} /></AeroOrb>
-            <AeroOrb onClick={props.onToggleLyrics} active={props.lyricsOpen} size={38}><FileText size={15} /></AeroOrb>
+            <AeroOrb onClick={props.onToggleLyrics} active={props.lyricsOpen} size={38}><MicVocal size={15} /></AeroOrb>
           </div>
 
           {/* Volume */}
@@ -7343,10 +7346,14 @@ function FullscreenUnique(props: FullscreenSharedProps) {
       ))}
       {/* Content */}
       <motion.div
-        className="relative z-10 flex h-full max-w-2xl mx-auto"
+        className="relative z-10 flex h-full max-w-2xl"
         initial={false}
-        animate={{ x: lyricsOpen ? "-42%" : "0%" }}
-        transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
+        animate={{ x: 0 }}
+        style={{
+          marginLeft: lyricsOpen ? "2vw" : "auto",
+          marginRight: "auto",
+          transition: "margin-left 420ms cubic-bezier(0.22,1,0.36,1)",
+        }}
       >
         {/* Left: album art column */}
         <div className="flex flex-col items-center justify-center p-8 gap-4" style={{ width: 280, borderRight: `2px solid rgba(${accentColor},0.2)` }}>
@@ -7391,7 +7398,7 @@ function FullscreenUnique(props: FullscreenSharedProps) {
               {icon:<SkipBack size={18} fill="currentColor" strokeWidth={0}/>, action:onPrev, label:"PREV"},
               {icon:player.isPlaying?<Pause size={22} fill="currentColor" strokeWidth={0}/>:<Play size={22} fill="currentColor" strokeWidth={0}/>, action:onTogglePlay, label:player.isPlaying?"PAUS":"PLAY", big:true},
               {icon:<SkipForward size={18} fill="currentColor" strokeWidth={0}/>, action:onNext, label:"NEXT"},
-              {icon:<FileText size={16}/>, action:props.onToggleLyrics, active:props.lyricsOpen, label:"LYRICS"},
+              {icon:<MicVocal size={16}/>, action:props.onToggleLyrics, active:props.lyricsOpen, label:"LYRICS"},
             ].map((btn,i)=>(
               <button key={i} onClick={btn.action} style={{ flex:btn.big?2:1, padding:"10px 0", background:"transparent", border:`1px solid ${btn.active||btn.big?`rgb(${accentColor})`:`rgba(255,255,255,0.15)`}`, color:btn.active||btn.big?`rgb(${accentColor})`:"rgba(255,255,255,0.6)", cursor:"pointer", display:"flex", flexDirection:"column", alignItems:"center", gap:3, boxShadow:btn.big||btn.active?`0 0 16px rgba(${accentColor},0.3)`:undefined, letterSpacing:"0.1em" }}>
                 {btn.icon}
@@ -7453,7 +7460,7 @@ function FullscreenPlayer(props: React.ComponentProps<typeof FullscreenPlayerInn
   const isUniqueLyrics = layoutTheme === "unique";
   const lyricsPanelStyle: React.CSSProperties = isModernLyrics
     ? {
-        width: "50%",
+        width: "46%",
         background: "linear-gradient(135deg, rgba(255,255,255,0.11), rgba(255,255,255,0.035))",
         backdropFilter: "blur(42px) saturate(180%)",
         WebkitBackdropFilter: "blur(42px) saturate(180%)",
@@ -7475,7 +7482,7 @@ function FullscreenPlayer(props: React.ComponentProps<typeof FullscreenPlayerInn
         }
       : isUniqueLyrics
         ? {
-            width: "52%",
+            width: "44%",
             background: "rgba(1,1,8,0.88)",
             borderLeft: "2px solid var(--primary)",
             boxShadow: "-16px 0 48px color-mix(in srgb, var(--primary) 18%, transparent)",
@@ -7676,7 +7683,15 @@ function FullscreenPlayerInner({
         </div>
 
         {/* Main controls — big square play, prev/next flanking */}
-        <div className="flex items-center justify-center gap-10 mb-8">
+        <div className="flex items-center justify-center gap-7 mb-8">
+          <button
+            onClick={onShuffle}
+            className={`w-11 h-11 flex items-center justify-center rounded-full transition-all duration-200 active:scale-90 ${player.shuffle ? "text-white bg-white/18" : "text-white/60 hover:text-white hover:bg-white/10"}`}
+            aria-label="Shuffle"
+            title="Shuffle"
+          >
+            <Shuffle size={19} />
+          </button>
           <button
             onClick={onPrev}
             disabled={player.queuePos === 0 && !player.shuffle}
@@ -7707,7 +7722,7 @@ function FullscreenPlayerInner({
             aria-label="Toggle lyrics"
             title="Toggle lyrics"
           >
-            <FileText size={20} />
+            <MicVocal size={20} />
           </button>
         </div>
 
@@ -7736,13 +7751,6 @@ function FullscreenPlayerInner({
             aria-label="Full volume"
           >
             <Volume2 size={16} />
-          </button>
-          <button onClick={onShuffle}
-            className="ml-2 shrink-0 transition-colors"
-            style={{ color: player.shuffle ? "#fff" : "rgba(255,255,255,0.45)" }}
-            aria-label="Shuffle"
-          >
-            <Shuffle size={16} />
           </button>
         </div>
       </motion.div>
