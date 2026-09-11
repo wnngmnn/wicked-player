@@ -7,7 +7,7 @@ import {
   Music, Shuffle, ImagePlus, Link2, ListMusic,
   Library, User, Settings, PanelLeftClose, PanelLeftOpen, Home,
   Search, GripVertical, LayoutList, Maximize2, ChevronDown, ArrowUpDown,
-  Heart, Star, Globe, Lock, Unlock, Calendar, Tag, FileText
+  Heart, Star, Globe, Lock, Unlock, Calendar, Tag, FileText, MicVocal
 } from "lucide-react";
 import StatsPanel from "./StatsPanel";
 import { recordListen, recordPlay, flushStats } from "./stats";
