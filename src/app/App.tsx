@@ -2169,7 +2169,7 @@ export default function App() {
                   player={player}
                   projects={projects}
                   nextUpPreview={nextUpPreview}
-                  onDismiss={() => setNextUpPreview(false)}
+                  onDismiss={() => { nextUpDismissedRef.current = player.queuePos; setNextUpPreview(false); }}
                   onSkip={() => {
                     void goNext();
                     setNextUpPreview(false);
