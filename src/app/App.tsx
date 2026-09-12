@@ -1521,6 +1521,9 @@ export default function App() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showNextUp, setShowNextUp] = useState(false);
   const [nextUpPreview, setNextUpPreview] = useState(false);
+  // Remembers the queue position the user dismissed the Next Up popup for,
+  // so it doesn't reappear every second for the rest of that track.
+  const nextUpDismissedRef = useRef<number | null>(null);
   const [likedSongs, setLikedSongs] = useState<LikedSong[]>([]);
   const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
@@ -1617,7 +1620,12 @@ export default function App() {
     const { currentTime, duration, isPlaying, queue, queuePos } = player;
     const timeLeft = duration - currentTime;
     const hasNext = queue.length > queuePos + 1;
-    if (isPlaying && hasNext && duration > 0 && timeLeft <= 20 && timeLeft > 0 && !showNextUp && !isFullscreen) {
+    // New track started — forget the dismissal
+    if (nextUpDismissedRef.current !== null && nextUpDismissedRef.current !== queuePos) {
+      nextUpDismissedRef.current = null;
+    }
+    const dismissedForThisTrack = nextUpDismissedRef.current === queuePos;
+    if (isPlaying && hasNext && duration > 0 && timeLeft <= 20 && timeLeft > 0 && !showNextUp && !isFullscreen && !dismissedForThisTrack) {
       setNextUpPreview(true);
     } else {
       setNextUpPreview(false);
@@ -2161,7 +2169,7 @@ export default function App() {
                   player={player}
                   projects={projects}
                   nextUpPreview={nextUpPreview}
-                  onDismiss={() => setNextUpPreview(false)}
+                  onDismiss={() => { nextUpDismissedRef.current = player.queuePos; setNextUpPreview(false); }}
                   onSkip={() => {
                     void goNext();
                     setNextUpPreview(false);
