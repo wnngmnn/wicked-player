@@ -6821,232 +6821,152 @@ function FsBtn({
 }
 
 function FullscreenModern(props: FullscreenSharedProps) {
-  const { project, track, player, onTogglePlay, onSeek, onVolume, onPrev, onNext, onShuffle, onClose, accentColor, liked, toggleLike, fsBg, analyserRef, lyricsOpen } = props;
+  const { project, track, player, onTogglePlay, onSeek, onVolume, onPrev, onNext, onShuffle, onClose, accentColor, liked, toggleLike, lyricsOpen } = props;
   const hasCover = !!project.coverDataUrl;
   const progress = player.duration > 0 ? player.currentTime / player.duration : 0;
   const [scrubHover, setScrubHover] = useState(false);
 
+  // Flat minimal icon-button
+  const FlatBtn = ({ onClick, active, disabled, label, size = 40, children }: {
+    onClick?: () => void; active?: boolean; disabled?: boolean; label: string; size?: number; children: React.ReactNode;
+  }) => (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+      title={label}
+      className="flex items-center justify-center transition-colors duration-150 disabled:opacity-25"
+      style={{
+        width: size, height: size, borderRadius: 6,
+        color: active ? `rgb(${accentColor})` : "rgba(255,255,255,0.55)",
+        background: "transparent",
+      }}
+      onMouseEnter={e => { if (!disabled) e.currentTarget.style.color = active ? `rgb(${accentColor})` : "#fff"; }}
+      onMouseLeave={e => { e.currentTarget.style.color = active ? `rgb(${accentColor})` : "rgba(255,255,255,0.55)"; }}
+    >
+      {children}
+    </button>
+  );
+
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center overflow-hidden animate-app-fade-in">
-      {/* Background */}
-      <div className="absolute inset-0">
-        <FsBackground project={project} accentColor={accentColor} fsBg={fsBg} analyserRef={analyserRef} isPlaying={player.isPlaying} />
-        {/* Vignette / darkening for readability */}
-        <div className="absolute inset-0" style={{ background: "radial-gradient(ellipse at center, rgba(0,0,0,0.25) 0%, rgba(0,0,0,0.65) 100%)" }} />
-      </div>
+    <div className="fixed inset-0 z-[200] overflow-hidden animate-app-fade-in" style={{ background: "#0a0a0c" }}>
+      {/* Flat background — single solid tone, hairline top accent */}
+      <div className="absolute top-0 left-0 right-0 h-px" style={{ background: `rgba(${accentColor},0.5)` }} />
 
-      {/* Ambient glow behind glass card */}
-      <div
-        className="absolute rounded-full pointer-events-none"
-        style={{
-          width: 520, height: 520,
-          background: `radial-gradient(circle, rgba(${accentColor},0.55) 0%, rgba(${accentColor},0) 70%)`,
-          filter: "blur(60px)",
-          top: "50%", left: "50%", transform: "translate(-50%,-58%)",
-        }}
-      />
-
-      {/* Liquid glass card */}
-      <motion.div
-        className="z-10 w-full max-w-md flex flex-col items-center animate-app-scale-in overflow-y-auto overflow-x-hidden"
-        initial={false}
-        animate={{ left: lyricsOpen ? "4.5%" : "50%", x: lyricsOpen ? "0%" : "-50%" }}
-        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-        style={{
-          position: "absolute",
-          top: "50%",
-          y: "-50%",
-          maxHeight: "94vh",
-          background: "linear-gradient(180deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.04) 100%)",
-          backdropFilter: "blur(60px) saturate(220%)",
-          WebkitBackdropFilter: "blur(60px) saturate(220%)",
-          border: "1px solid rgba(255,255,255,0.14)",
-          borderRadius: "2rem",
-          padding: "1.75rem 1.75rem 1.5rem",
-          boxShadow: "0 40px 100px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.18), inset 0 -1px 0 rgba(255,255,255,0.04)",
-        }}
+      {/* Close — minimal, top right */}
+      <button
+        onClick={onClose}
+        aria-label="Close"
+        className="absolute top-5 right-5 z-20 flex items-center justify-center text-white/50 hover:text-white transition-colors duration-150"
+        style={{ width: 36, height: 36, borderRadius: 6, border: "1px solid rgba(255,255,255,0.1)" }}
       >
-        {/* Top row: grab pill + close */}
-        <div className="w-full flex items-center justify-between mb-4">
-          <div style={{ width: 32 }} />
-          <div style={{ width: 40, height: 4, borderRadius: 2, background: "rgba(255,255,255,0.22)" }} />
-          <button
-            onClick={onClose}
-            className="text-white/60 hover:text-white transition-all hover:scale-105 active:scale-95"
-            style={{
-              width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center",
-              background: "rgba(255,255,255,0.10)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
-              borderRadius: 9999, border: "1px solid rgba(255,255,255,0.14)",
-            }}
-            aria-label="Close"
-          >
-            <ChevronDown size={16} />
-          </button>
-        </div>
+        <ChevronDown size={17} />
+      </button>
 
-        {/* Album art */}
+      {/* Player column — slides left when lyrics open */}
+      <motion.div
+        className="z-10 w-full max-w-[380px] flex flex-col justify-center px-2"
+        initial={false}
+        animate={{ left: lyricsOpen ? "5%" : "50%", x: lyricsOpen ? "0%" : "-50%" }}
+        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+        style={{ position: "absolute", top: 0, bottom: 0, maxHeight: "100vh" }}
+      >
+        {/* Album art — flat, slight radius, no shadow */}
         <div
-          className="transition-transform duration-500 ease-out"
+          className="transition-transform duration-500 ease-out mx-auto"
           style={{
-            width: "min(100%, 260px, 30vh)", aspectRatio: "1", flexShrink: 0,
-            borderRadius: "1.5rem", overflow: "hidden",
-            boxShadow: `0 28px 70px rgba(${accentColor},0.45), 0 12px 30px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(255,255,255,0.10)`,
-            marginBottom: "0.5rem",
-            transform: player.isPlaying ? "scale(1)" : "scale(0.94)",
+            width: "min(100%, 300px, 38vh)", aspectRatio: "1", flexShrink: 0,
+            borderRadius: 10, overflow: "hidden",
+            border: "1px solid rgba(255,255,255,0.09)",
+            transform: player.isPlaying ? "scale(1)" : "scale(0.96)",
+            marginBottom: "2rem",
           }}
         >
           {hasCover
             ? <img src={project.coverDataUrl!} alt={project.name} className="w-full h-full object-cover" />
-            : <div className="w-full h-full flex items-center justify-center bg-white/10"><Music size={64} className="text-white/30" /></div>}
+            : <div className="w-full h-full flex items-center justify-center" style={{ background: "rgba(255,255,255,0.03)" }}><Music size={56} className="text-white/20" /></div>}
         </div>
 
-        {/* Reflection */}
-        <div
-          style={{
-            width: "72%", height: 26,
-            background: hasCover ? `url(${project.coverDataUrl}) center bottom / cover` : `rgba(${accentColor},0.15)`,
-            filter: "blur(8px)", opacity: 0.22, transform: "scaleY(-1)",
-            borderRadius: "0 0 1.5rem 1.5rem", marginBottom: "1.25rem",
-          }}
-        />
-
         {/* Track info */}
-        <div className="w-full flex items-center justify-between mb-4 gap-3">
+        <div className="w-full flex items-end justify-between mb-6 gap-3">
           <div className="min-w-0 flex-1">
-            <p className="text-white font-bold text-[19px] truncate leading-tight tracking-tight">{track.name}</p>
-            <p className="text-white/55 text-[13px] truncate mt-1 font-medium">{project.artist || "Unknown Artist"}</p>
+            <p className="text-white font-semibold text-[22px] truncate leading-tight tracking-tight">{track.name}</p>
+            <p className="text-[13px] truncate mt-1.5" style={{ color: "rgba(255,255,255,0.42)" }}>{project.artist || "Unknown Artist"}</p>
           </div>
           {toggleLike && (
-            <button
-              onClick={() => toggleLike(project.id, track.id)}
-              className={`transition-all duration-200 ease-out hover:scale-110 active:scale-90 ${liked ? "text-red-400" : "text-white/50 hover:text-white"}`}
-              style={{
-                width: 38, height: 38, display: "flex", alignItems: "center", justifyContent: "center",
-                background: "rgba(255,255,255,0.10)",
-                border: "1px solid rgba(255,255,255,0.12)",
-                borderRadius: 9999,
-                backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
-              }}
-              aria-label={liked ? "Unlike" : "Like"}
-            >
-              <Heart size={17} fill={liked ? "currentColor" : "none"} strokeWidth={liked ? 0 : 2} />
-            </button>
+            <FlatBtn onClick={() => toggleLike(project.id, track.id)} label={liked ? "Unlike" : "Like"} active={liked}>
+              <Heart size={18} fill={liked ? "currentColor" : "none"} strokeWidth={liked ? 0 : 1.75} />
+            </FlatBtn>
           )}
         </div>
 
-        {/* Scrubber */}
+        {/* Scrubber — hairline */}
         <div
-          className="w-full mb-1"
-          style={{ cursor: "pointer" }}
+          className="w-full mb-1.5"
+          style={{ cursor: "pointer", padding: "8px 0", margin: "-8px 0" }}
           onMouseEnter={() => setScrubHover(true)}
           onMouseLeave={() => setScrubHover(false)}
           onClick={e => { const r = e.currentTarget.getBoundingClientRect(); onSeek(((e.clientX - r.left) / r.width) * player.duration); }}
         >
-          <div style={{ height: scrubHover ? 6 : 4, background: "rgba(255,255,255,0.14)", borderRadius: 9999, position: "relative", transition: "height 180ms ease" }}>
+          <div style={{ height: scrubHover ? 3 : 2, background: "rgba(255,255,255,0.12)", borderRadius: 2, position: "relative", transition: "height 150ms ease" }}>
             <div
               style={{
                 height: "100%", width: `${progress * 100}%`,
-                background: `linear-gradient(90deg, #fff 0%, rgba(255,255,255,0.85) 100%)`,
-                borderRadius: 9999, position: "relative",
-                boxShadow: `0 0 12px rgba(255,255,255,0.35)`,
+                background: "#fff", borderRadius: 2, position: "relative",
                 transition: "width 120ms linear",
               }}
             >
               <div
                 style={{
-                  position: "absolute", right: -6, top: "50%", transform: "translateY(-50%)",
-                  width: scrubHover ? 14 : 0, height: scrubHover ? 14 : 0,
+                  position: "absolute", right: -5, top: "50%", transform: "translateY(-50%)",
+                  width: scrubHover ? 10 : 0, height: scrubHover ? 10 : 0,
                   background: "#fff", borderRadius: 9999,
-                  boxShadow: "0 0 10px rgba(255,255,255,0.7), 0 2px 6px rgba(0,0,0,0.4)",
-                  transition: "width 180ms ease, height 180ms ease",
+                  transition: "width 150ms ease, height 150ms ease",
                 }}
               />
             </div>
           </div>
         </div>
-        <div className="flex justify-between w-full text-[11px] text-white/40 mb-6 font-medium tabular-nums">
+        <div className="flex justify-between w-full text-[11px] mb-8 tabular-nums" style={{ color: "rgba(255,255,255,0.35)", fontVariantNumeric: "tabular-nums" }}>
           <span>{fmt(player.currentTime)}</span>
           <span>-{fmt(Math.max(0, player.duration - player.currentTime))}</span>
         </div>
 
-        {/* Controls */}
-        <div className="flex items-center justify-between w-full mb-5">
-          <button
-            onClick={onShuffle}
-            className="transition-all duration-200 hover:scale-110 active:scale-90"
-            style={{
-              width: 40, height: 40, display: "flex", alignItems: "center", justifyContent: "center",
-              borderRadius: 9999,
-              background: player.shuffle ? "rgba(255,255,255,0.18)" : "transparent",
-              color: player.shuffle ? "#fff" : "rgba(255,255,255,0.45)",
-              border: player.shuffle ? "1px solid rgba(255,255,255,0.16)" : "1px solid transparent",
-            }}
-            aria-label="Shuffle"
-          >
-            <Shuffle size={17} />
-          </button>
-          <button
-            onClick={onPrev}
-            disabled={player.queuePos === 0 && !player.shuffle}
-            className="w-12 h-12 flex items-center justify-center rounded-full text-white/90 hover:text-white hover:bg-white/10 transition-all duration-200 hover:scale-110 active:scale-90 disabled:opacity-30"
-            aria-label="Previous"
-          >
-            <IconPrev size={32} />
-          </button>
+        {/* Controls — flat row */}
+        <div className="flex items-center justify-between w-full mb-8">
+          <FlatBtn onClick={onShuffle} active={player.shuffle} label="Shuffle"><Shuffle size={17} /></FlatBtn>
+          <FlatBtn onClick={onPrev} disabled={player.queuePos === 0 && !player.shuffle} label="Previous" size={48}><IconPrev size={30} /></FlatBtn>
           <button
             onClick={onTogglePlay}
-            className="transition-all duration-200 hover:scale-105 active:scale-95"
-            style={{
-              width: 64, height: 64, display: "flex", alignItems: "center", justifyContent: "center",
-              borderRadius: 9999,
-              background: "linear-gradient(180deg, #fff 0%, rgba(240,240,245,0.95) 100%)",
-              color: "#0a0a12",
-              boxShadow: `0 12px 32px rgba(0,0,0,0.5), 0 0 24px rgba(${accentColor},0.35), inset 0 1px 0 rgba(255,255,255,0.9), inset 0 -2px 4px rgba(0,0,0,0.08)`,
-            }}
             aria-label={player.isPlaying ? "Pause" : "Play"}
+            className="flex items-center justify-center transition-transform duration-150 hover:scale-[1.04] active:scale-95"
+            style={{
+              width: 62, height: 62, borderRadius: 9999,
+              background: "#fff", color: "#0a0a0c",
+            }}
           >
             {player.isPlaying
-              ? <Pause size={26} fill="currentColor" strokeWidth={0} />
-              : <Play  size={26} fill="currentColor" strokeWidth={0} style={{ marginLeft: 2 }} />}
+              ? <Pause size={24} fill="currentColor" strokeWidth={0} />
+              : <Play  size={24} fill="currentColor" strokeWidth={0} style={{ marginLeft: 2 }} />}
           </button>
-          <button
-            onClick={onNext}
-            className="w-12 h-12 flex items-center justify-center rounded-full text-white/90 hover:text-white hover:bg-white/10 transition-all duration-200 hover:scale-110 active:scale-90"
-            aria-label="Next"
-          >
-            <IconNext size={32} />
-          </button>
-          <button
-            onClick={props.onToggleLyrics}
-            className="transition-all duration-200 hover:scale-110 active:scale-90"
-            style={{
-              width: 40, height: 40, display: "flex", alignItems: "center", justifyContent: "center",
-              borderRadius: 9999,
-              background: props.lyricsOpen ? "rgba(255,255,255,0.18)" : "transparent",
-              color: props.lyricsOpen ? "#fff" : "rgba(255,255,255,0.45)",
-              border: props.lyricsOpen ? "1px solid rgba(255,255,255,0.16)" : "1px solid transparent",
-            }}
-            aria-label="Toggle lyrics"
-            title="Toggle lyrics"
-          >
-            <MicVocal size={17} />
-          </button>
+          <FlatBtn onClick={onNext} label="Next" size={48}><IconNext size={30} /></FlatBtn>
+          <FlatBtn onClick={props.onToggleLyrics} active={props.lyricsOpen} label="Toggle lyrics"><MicVocal size={17} /></FlatBtn>
         </div>
 
-        {/* Volume */}
+        {/* Volume — hairline slider */}
         <div className="flex items-center gap-3 w-full">
-          <button onClick={() => onVolume(0)} className="text-white/40 hover:text-white/80 transition-colors shrink-0" aria-label="Mute">
-            <VolumeX size={14} />
+          <button onClick={() => onVolume(0)} className="text-white/35 hover:text-white/80 transition-colors shrink-0" aria-label="Mute">
+            <VolumeX size={13} />
           </button>
           <input
             type="range" min={0} max={1} step={0.01}
             value={player.volume}
             onChange={e => onVolume(Number(e.target.value))}
             className="flex-1 cursor-pointer"
-            style={{ accentColor: "rgba(255,255,255,0.9)", height: 2 }}
+            style={{ accentColor: "#fff", height: 2 }}
           />
-          <button onClick={() => onVolume(1)} className="text-white/70 hover:text-white transition-colors shrink-0" aria-label="Full volume">
-            <Volume2 size={14} />
+          <button onClick={() => onVolume(1)} className="text-white/60 hover:text-white transition-colors shrink-0" aria-label="Full volume">
+            <Volume2 size={13} />
           </button>
         </div>
       </motion.div>
