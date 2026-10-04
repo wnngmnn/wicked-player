@@ -2420,7 +2420,7 @@ function FolderCard({
         className={`relative aspect-square mb-3 overflow-hidden ${
           isClassic ? "border-2 border-[var(--border)] shadow-[inset_1px_1px_0_rgba(255,255,255,0.2),inset_-1px_-1px_0_rgba(0,0,0,0.35),2px_2px_4px_rgba(0,0,0,0.3)]"
           : isUnique ? "border-2 border-primary shadow-[0_0_12px_color-mix(in_srgb,var(--primary)_30%,transparent)]"
-          : isModern ? "rounded-3xl border border-white/12 bg-white/5 backdrop-blur"
+          : isModern ? "rounded-2xl border border-white/10 bg-neutral-900"
           : "rounded-lg border border-border bg-card shadow-lg"
         }`}
         style={{ borderRadius: isClassic ? 2 : isModern ? undefined : undefined }}
@@ -7390,10 +7390,8 @@ function FullscreenPlayer(props: React.ComponentProps<typeof FullscreenPlayerInn
   const lyricsPanelStyle: React.CSSProperties = isModernLyrics
     ? {
         width: "46%",
-        background: "linear-gradient(135deg, rgba(255,255,255,0.11), rgba(255,255,255,0.035))",
-        backdropFilter: "blur(42px) saturate(180%)",
-        WebkitBackdropFilter: "blur(42px) saturate(180%)",
-        borderLeft: "1px solid rgba(255,255,255,0.13)",
+        background: "#0a0a0a",
+        borderLeft: "1px solid rgba(255,255,255,0.08)",
         maskImage: "linear-gradient(180deg, transparent 0%, #000 11%, #000 84%, transparent 100%)",
         WebkitMaskImage: "linear-gradient(180deg, transparent 0%, #000 11%, #000 84%, transparent 100%)",
       }
