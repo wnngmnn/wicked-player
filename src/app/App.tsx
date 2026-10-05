@@ -18,7 +18,7 @@ import {
   deleteAudioFile, overwriteAudioFile, addExtraFolder, removeExtraFolder, listFolders,
   requestAllPermissions, anyFolderNeedsPermission, scanFolderFiles, MAIN_SOURCE, type FolderInfo,
 } from "./library-fs";
-import { writeId3Tags, supportsId3, readId3Tags } from "./id3";
+import { writeId3Tags, supportsId3, readAudioTags } from "./id3";
 import {
   loadCollection, saveCollection, gcCovers, clearAll, storageEstimate,
   requestPersistentStorage, saveCover, releaseAllCoverUrls, type StoreKey,
@@ -338,17 +338,25 @@ async function importFromFolders(
       i++;
       if (known.has(`${source}|${path}`)) continue;
       if (i % 5 === 0) onProgress?.(`Reading ${i}/${files.length}…`);
-      const tags = await readId3Tags(file);
-      const base = path.split("/").pop()!.replace(/\.[^.]+$/, "");
+      const tags = await readAudioTags(file, path);
+      // iTunes layout: …/Artist/Album/[disc-]NN Title.ext — used when tags are missing.
+      const parts = path.split("/");
+      const rawBase = parts[parts.length - 1].replace(/\.[^.]+$/, "");
+      const num = rawBase.match(/^(?:(\d{1,2})-)?(\d{1,3})[\s._-]+(.+)$/);
+      const base = num ? num[3].trim() : rawBase;
+      if (num) { tags.track ||= parseInt(num[2], 10); if (num[1]) tags.disc ||= parseInt(num[1], 10); }
+      const folderAlbum = parts.length >= 2 ? parts[parts.length - 2] : "";
+      const folderArtist = parts.length >= 3 ? parts[parts.length - 3] : "";
+      const isGeneric = (n: string) => /^(music|itunes media|itunes music|media|unknown album|unknown artist|compilations)$/i.test(n);
       const title = tags.title || base;
-      const artist = tags.albumArtist || tags.artist || "Unknown Artist";
-      const albumName = tags.album || (path.includes("/") ? path.split("/").slice(-2, -1)[0] : "") || title;
+      const artist = tags.albumArtist || tags.artist || (folderArtist && !isGeneric(folderArtist) ? folderArtist : "") || "Unknown Artist";
+      const albumName = tags.album || (folderAlbum && !isGeneric(folderAlbum) ? folderAlbum : "") || title;
       const k = albumKey(albumName, artist, tags.disc);
       let proj = byKey.get(k);
       if (!proj) {
         proj = {
           id: genId(), name: albumName, artist, coverDataUrl: null, tracks: [], createdAt: Date.now(),
-          isSingle: !tags.album && !path.includes("/"), discNumber: tags.disc, genre: tags.genre, year: tags.year,
+          isSingle: !tags.album && (!folderAlbum || isGeneric(folderAlbum)), discNumber: tags.disc, genre: tags.genre, year: tags.year,
         };
         byKey.set(k, proj); list.push(proj);
       }

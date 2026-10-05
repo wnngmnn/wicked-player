@@ -219,3 +219,86 @@ export async function readId3Tags(file: Blob): Promise<ReadTags> {
   } catch { /* corrupt tag */ }
   return out;
 }
+
+// ── MP4 / M4A tag reader (iTunes AAC + Apple Lossless files) ───────────────
+
+const MP4_MAP: Record<string, keyof ReadTags> = {
+  "©nam": "title", "©ART": "artist", "aART": "albumArtist", "©alb": "album",
+  "©gen": "genre", "©day": "year", "©lyr": "lyrics", trkn: "track", disk: "disc",
+  covr: "cover", gnre: "genre",
+};
+
+function atomName(b: Uint8Array, o: number): string {
+  return String.fromCharCode(b[o], b[o + 1], b[o + 2], b[o + 3]).replace("\u00a9", "©");
+}
+
+/** Reads iTunes-style metadata from an .m4a/.mp4 file. Never throws. */
+export async function readMp4Tags(file: Blob): Promise<ReadTags> {
+  const out: ReadTags = {};
+  try {
+    // Find the top-level "moov" atom (may be at the start or end of the file).
+    let pos = 0, moov: Uint8Array | null = null;
+    const size = file.size;
+    while (pos + 8 <= size) {
+      const h = new DataView(await file.slice(pos, pos + 16).arrayBuffer());
+      let len = h.getUint32(0);
+      const name = String.fromCharCode(h.getUint8(4), h.getUint8(5), h.getUint8(6), h.getUint8(7));
+      let hdr = 8;
+      if (len === 1) { len = Number(h.getBigUint64(8)); hdr = 16; }
+      else if (len === 0) len = size - pos;
+      if (len < hdr) break;
+      if (name === "moov") {
+        if (len > 64_000_000) return out;
+        moov = new Uint8Array(await file.slice(pos + hdr, pos + len).arrayBuffer());
+        break;
+      }
+      pos += len;
+    }
+    if (!moov) return out;
+    const dv = new DataView(moov.buffer, moov.byteOffset, moov.byteLength);
+    const find = (start: number, end: number, path: string[]): [number, number] | null => {
+      let p = start;
+      while (p + 8 <= end) {
+        const len = dv.getUint32(p);
+        if (len < 8 || p + len > end) return null;
+        if (atomName(moov!, p + 4) === path[0]) {
+          let inner = p + 8;
+          if (path[0] === "meta") inner += 4; // version/flags
+          return path.length === 1 ? [inner, p + len] : find(inner, p + len, path.slice(1));
+        }
+        p += len;
+      }
+      return null;
+    };
+    const ilst = find(0, moov.length, ["udta", "meta", "ilst"]);
+    if (!ilst) return out;
+    let p = ilst[0];
+    while (p + 8 <= ilst[1]) {
+      const len = dv.getUint32(p);
+      if (len < 8 || p + len > ilst[1]) break;
+      const key = MP4_MAP[atomName(moov, p + 4)];
+      const data = find(p + 8, p + len, ["data"]);
+      p += len;
+      if (!key || !data || out[key] !== undefined) continue;
+      const type = dv.getUint32(data[0]) & 0xffffff;
+      const val = moov.subarray(data[0] + 8, data[1]);
+      if (key === "cover") { out.cover = new Blob([val.slice()], { type: type === 14 ? "image/png" : "image/jpeg" }); continue; }
+      if (key === "track" || key === "disc") { const n = (val[2] << 8) | val[3]; if (n > 0) out[key] = n; continue; }
+      if (key === "genre" && type === 0 && val.length >= 2) { const g = GENRES[((val[0] << 8) | val[1]) - 1]; if (g) out.genre = g; continue; }
+      const text = new TextDecoder("utf-8").decode(val).trim();
+      if (!text) continue;
+      if (key === "year") { const n = parseInt(text.slice(0, 4), 10); if (n > 0) out.year = n; }
+      else (out as Record<string, unknown>)[key] = text;
+    }
+  } catch { /* unreadable */ }
+  return out;
+}
+
+/** Reads tags from any supported audio file (ID3 for MP3, atoms for M4A/MP4). */
+export async function readAudioTags(file: Blob, name = ""): Promise<ReadTags> {
+  if (/\.(m4a|mp4|m4b|aac|alac)$/i.test(name) || file.type === "audio/mp4" || file.type === "audio/x-m4a") {
+    const t = await readMp4Tags(file);
+    if (Object.keys(t).length) return t;
+  }
+  return readId3Tags(file);
+}
