@@ -1643,32 +1643,6 @@ export default function App() {
     };
   }, []);
 
-  // Folders lose access after a browser restart. Re-grant on the first click or
-  // key press (browsers only allow this from a gesture), then rescan — songs
-  // are never removed just because a folder is temporarily disconnected.
-  useEffect(() => {
-    if (!hydrated || !isFsSupported()) return;
-    let done = false;
-    const onGesture = async () => {
-      if (done) return;
-      done = true;
-      cleanup();
-      if (await anyFolderNeedsPermission()) await requestAllPermissions();
-      void syncFolders(true);
-    };
-    const cleanup = () => {
-      window.removeEventListener("pointerdown", onGesture, true);
-      window.removeEventListener("keydown", onGesture, true);
-    };
-    void (async () => {
-      if (await anyFolderNeedsPermission()) {
-        window.addEventListener("pointerdown", onGesture, true);
-        window.addEventListener("keydown", onGesture, true);
-      } else { done = true; void syncFolders(true); }
-    })();
-    return cleanup;
-  }, [hydrated, syncFolders]);
-
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -1778,6 +1752,33 @@ export default function App() {
       syncingRef.current = false;
     }
   }, [showToast]);
+
+  // Folders lose access after a browser restart. Re-grant on the first click or
+  // key press (browsers only allow this from a gesture), then rescan — songs
+  // are never removed just because a folder is temporarily disconnected.
+  useEffect(() => {
+    if (!hydrated || !isFsSupported()) return;
+    let done = false;
+    const onGesture = async () => {
+      if (done) return;
+      done = true;
+      cleanup();
+      if (await anyFolderNeedsPermission()) await requestAllPermissions();
+      void syncFolders(true);
+    };
+    const cleanup = () => {
+      window.removeEventListener("pointerdown", onGesture, true);
+      window.removeEventListener("keydown", onGesture, true);
+    };
+    void (async () => {
+      if (await anyFolderNeedsPermission()) {
+        window.addEventListener("pointerdown", onGesture, true);
+        window.addEventListener("keydown", onGesture, true);
+      } else { done = true; void syncFolders(true); }
+    })();
+    return cleanup;
+  }, [hydrated, syncFolders]);
+
 
 
   // ── Queue management ───────────────────────────────────────────────────
