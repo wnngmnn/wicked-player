@@ -15,9 +15,10 @@ import { recordListen, recordPlay, flushStats } from "./stats";
 import {
   isFsSupported, pickLibraryFolder, getSavedLibraryName, getLibraryDir,
   libraryPermissionState, forgetLibraryFolder, writeAudioFile, readAudioFile,
-  deleteAudioFile, overwriteAudioFile,
+  deleteAudioFile, overwriteAudioFile, addExtraFolder, removeExtraFolder, listFolders,
+  requestAllPermissions, anyFolderNeedsPermission, scanFolderFiles, MAIN_SOURCE, type FolderInfo,
 } from "./library-fs";
-import { writeId3Tags, supportsId3 } from "./id3";
+import { writeId3Tags, supportsId3, readId3Tags } from "./id3";
 import {
   loadCollection, saveCollection, gcCovers, clearAll, storageEstimate,
   requestPersistentStorage, saveCover, releaseAllCoverUrls, type StoreKey,
@@ -32,6 +33,8 @@ interface Track {
   audioKey: string;
   /** File name inside the user's local music folder (File System Access API). */
   filePath?: string;
+  /** Which folder the file lives in ("main" or an extra folder id). */
+  source?: string;
   duration: number;
   /** Optional lyrics shown in the fullscreen player. */
   lyrics?: string;
@@ -214,16 +217,16 @@ async function saveTrackFile(id: string, file: File): Promise<{ audioKey: string
 }
 
 /** Resolves a track's audio, from disk first then browser storage. */
-async function loadTrackFile(track: { audioKey: string; filePath?: string }): Promise<Blob | null> {
+async function loadTrackFile(track: { audioKey: string; filePath?: string; source?: string }): Promise<Blob | null> {
   if (track.filePath) {
-    const file = await readAudioFile(track.filePath, true);
+    const file = await readAudioFile(track.filePath, true, track.source);
     if (file) return file;
   }
   try { return await dbGet(track.audioKey); } catch { return null; }
 }
 
-async function deleteTrackFile(track: { audioKey: string; filePath?: string }): Promise<void> {
-  if (track.filePath) await deleteAudioFile(track.filePath);
+async function deleteTrackFile(track: { audioKey: string; filePath?: string; source?: string }): Promise<void> {
+  if (track.filePath) await deleteAudioFile(track.filePath, track.source);
   try { await dbDel(track.audioKey); } catch { /* ignore */ }
 }
 
@@ -274,7 +277,7 @@ async function tagTracks(
         cover,
       });
       if (track.filePath) {
-        const ok = await overwriteAudioFile(track.filePath, out);
+        const ok = await overwriteAudioFile(track.filePath, out, track.source);
         if (!ok) { skipped++; onProgress?.(i + 1, tracks.length); continue; }
       } else {
         await dbPut(track.audioKey, out);
@@ -289,6 +292,90 @@ async function tagTracks(
 }
 
 
+
+// ── Folder scanning (reads songs + tags from every connected folder) ──────
+
+const norm = (s: string | undefined) => (s ?? "").toLowerCase().normalize("NFKD")
+  .replace(/[\u0300-\u036f]/g, "").replace(/\s*[([](deluxe|explicit|remaster(ed)?)[^)\]]*[)\]]/g, "")
+  .replace(/[^a-z0-9]+/g, " ").trim();
+const albumKey = (name: string, artist: string, disc?: number) => `${norm(name)}|${norm(artist)}|${disc || 1}`;
+const trackKey = (name: string) => norm(name);
+
+/** Merges albums that share name + artist + disc, dropping duplicate songs. */
+function mergeDuplicateAlbums(projects: Project[]): { list: Project[]; merged: number } {
+  const byKey = new Map<string, Project>();
+  const out: Project[] = [];
+  let merged = 0;
+  for (const p of projects) {
+    const k = albumKey(p.name, p.artist, p.discNumber);
+    const prev = byKey.get(k);
+    if (!prev) { const copy = { ...p, tracks: [...p.tracks] }; byKey.set(k, copy); out.push(copy); continue; }
+    merged++;
+    const seen = new Set(prev.tracks.map(t => trackKey(t.name)));
+    for (const t of p.tracks) if (!seen.has(trackKey(t.name))) { prev.tracks.push(t); seen.add(trackKey(t.name)); }
+    prev.coverDataUrl ||= p.coverDataUrl;
+    prev.genre ||= p.genre; prev.year ||= p.year;
+  }
+  return { list: out, merged };
+}
+
+/** Scans folders and adds every song not already in the library. */
+async function importFromFolders(
+  current: Project[],
+  sources: string[],
+  onProgress?: (msg: string) => void,
+): Promise<{ list: Project[]; added: number; merged: number }> {
+  const known = new Set<string>();
+  for (const p of current) for (const t of p.tracks) if (t.filePath) known.add(`${t.source || MAIN_SOURCE}|${t.filePath}`);
+  const list = current.map(p => ({ ...p, tracks: [...p.tracks] }));
+  const byKey = new Map(list.map(p => [albumKey(p.name, p.artist, p.discNumber), p] as const));
+  const order = new Map<string, number>();
+  let added = 0;
+  for (const source of sources) {
+    const files = await scanFolderFiles(source, n => onProgress?.(`Found ${n} files…`));
+    let i = 0;
+    for (const { path, file } of files) {
+      i++;
+      if (known.has(`${source}|${path}`)) continue;
+      if (i % 5 === 0) onProgress?.(`Reading ${i}/${files.length}…`);
+      const tags = await readId3Tags(file);
+      const base = path.split("/").pop()!.replace(/\.[^.]+$/, "");
+      const title = tags.title || base;
+      const artist = tags.albumArtist || tags.artist || "Unknown Artist";
+      const albumName = tags.album || (path.includes("/") ? path.split("/").slice(-2, -1)[0] : "") || title;
+      const k = albumKey(albumName, artist, tags.disc);
+      let proj = byKey.get(k);
+      if (!proj) {
+        proj = {
+          id: genId(), name: albumName, artist, coverDataUrl: null, tracks: [], createdAt: Date.now(),
+          isSingle: !tags.album && !path.includes("/"), discNumber: tags.disc, genre: tags.genre, year: tags.year,
+        };
+        byKey.set(k, proj); list.push(proj);
+      }
+      // Same song already in this album (e.g. copy in another folder) → skip.
+      if (proj.tracks.some(t => trackKey(t.name) === trackKey(title))) { known.add(`${source}|${path}`); continue; }
+      if (!proj.coverDataUrl && tags.cover) {
+        try { proj.coverDataUrl = (await resizeCover(new File([tags.cover], "cover", { type: tags.cover.type }))) || null; } catch { /* bad image */ }
+      }
+      proj.genre ||= tags.genre; proj.year ||= tags.year;
+      const id = genId();
+      const track: Track = { id, name: title, audioKey: `audio_${id}`, filePath: path, source, duration: await getAudioDuration(file), lyrics: tags.lyrics };
+      if (tags.track) order.set(id, tags.track);
+      proj.tracks.push(track);
+      known.add(`${source}|${path}`);
+      added++;
+    }
+  }
+  for (const p of list) {
+    if (p.tracks.some(t => order.has(t.id))) {
+      const old = p.tracks.filter(t => !order.has(t.id));
+      const fresh = p.tracks.filter(t => order.has(t.id)).sort((a, b) => order.get(a.id)! - order.get(b.id)!);
+      p.tracks = [...old, ...fresh];
+    }
+  }
+  const m = mergeDuplicateAlbums(list);
+  return { list: m.list, added, merged: m.merged };
+}
 
 // ── Utils ──────────────────────────────────────────────────────────────────
 
