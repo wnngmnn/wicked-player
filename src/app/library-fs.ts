@@ -286,7 +286,13 @@ export async function overwriteAudioFile(fileName: string, blob: Blob, source?: 
   }
 }
 
-const AUDIO_RE = /\.(mp3|m4a|aac|wav|flac|ogg|oga|opus|webm)$/i;
+const AUDIO_RE = /\.(mp3|m4a|m4b|aac|wav|aif|aiff|flac|ogg|oga|opus|webm)$/i;
+/** iTunes / Music folders that hold non-music or app data — skipped while scanning. */
+const SKIP_DIRS = new Set([
+  "podcasts", "automatically add to itunes", "automatically add to music", "previous itunes libraries",
+  "mobile applications", "books", "audiobooks", "voice memos", "tones", "album artwork", "movies",
+  "tv shows", "home videos", "music videos", "itunes u", "downloads", "cache", "itunes extras",
+]);
 
 /** Recursively lists every audio file in a folder (path relative to the folder root). */
 export async function scanFolderFiles(
@@ -301,6 +307,7 @@ export async function scanFolderFiles(
     for await (const entry of d.values()) {
       if (entry.name.startsWith(".")) continue;
       if (entry.kind === "directory") {
+        if (SKIP_DIRS.has(entry.name.toLowerCase())) continue;
         await walk(entry as DirHandle, `${prefix}${entry.name}/`, depth + 1);
       } else if (AUDIO_RE.test(entry.name)) {
         try {
