@@ -15,9 +15,10 @@ import { recordListen, recordPlay, flushStats } from "./stats";
 import {
   isFsSupported, pickLibraryFolder, getSavedLibraryName, getLibraryDir,
   libraryPermissionState, forgetLibraryFolder, writeAudioFile, readAudioFile,
-  deleteAudioFile, overwriteAudioFile,
+  deleteAudioFile, overwriteAudioFile, addExtraFolder, removeExtraFolder, listFolders,
+  requestAllPermissions, anyFolderNeedsPermission, scanFolderFiles, MAIN_SOURCE, type FolderInfo,
 } from "./library-fs";
-import { writeId3Tags, supportsId3 } from "./id3";
+import { writeId3Tags, supportsId3, readId3Tags } from "./id3";
 import {
   loadCollection, saveCollection, gcCovers, clearAll, storageEstimate,
   requestPersistentStorage, saveCover, releaseAllCoverUrls, type StoreKey,
@@ -32,6 +33,8 @@ interface Track {
   audioKey: string;
   /** File name inside the user's local music folder (File System Access API). */
   filePath?: string;
+  /** Which folder the file lives in ("main" or an extra folder id). */
+  source?: string;
   duration: number;
   /** Optional lyrics shown in the fullscreen player. */
   lyrics?: string;
@@ -214,16 +217,16 @@ async function saveTrackFile(id: string, file: File): Promise<{ audioKey: string
 }
 
 /** Resolves a track's audio, from disk first then browser storage. */
-async function loadTrackFile(track: { audioKey: string; filePath?: string }): Promise<Blob | null> {
+async function loadTrackFile(track: { audioKey: string; filePath?: string; source?: string }): Promise<Blob | null> {
   if (track.filePath) {
-    const file = await readAudioFile(track.filePath, true);
+    const file = await readAudioFile(track.filePath, true, track.source);
     if (file) return file;
   }
   try { return await dbGet(track.audioKey); } catch { return null; }
 }
 
-async function deleteTrackFile(track: { audioKey: string; filePath?: string }): Promise<void> {
-  if (track.filePath) await deleteAudioFile(track.filePath);
+async function deleteTrackFile(track: { audioKey: string; filePath?: string; source?: string }): Promise<void> {
+  if (track.filePath) await deleteAudioFile(track.filePath, track.source);
   try { await dbDel(track.audioKey); } catch { /* ignore */ }
 }
 
@@ -274,7 +277,7 @@ async function tagTracks(
         cover,
       });
       if (track.filePath) {
-        const ok = await overwriteAudioFile(track.filePath, out);
+        const ok = await overwriteAudioFile(track.filePath, out, track.source);
         if (!ok) { skipped++; onProgress?.(i + 1, tracks.length); continue; }
       } else {
         await dbPut(track.audioKey, out);
@@ -289,6 +292,93 @@ async function tagTracks(
 }
 
 
+
+// ── Folder scanning (reads songs + tags from every connected folder) ──────
+
+const norm = (s: string | undefined) => (s ?? "").toLowerCase().normalize("NFKD")
+  .replace(/[\u0300-\u036f]/g, "").replace(/\s*[([](deluxe|explicit|remaster(ed)?)[^)\]]*[)\]]/g, "")
+  .replace(/[^a-z0-9]+/g, " ").trim();
+const albumKey = (name: string, artist: string, disc?: number) => `${norm(name)}|${norm(artist)}|${disc || 1}`;
+const trackKey = (name: string) => norm(name);
+
+/** Merges albums that share name + artist + disc, dropping duplicate songs. */
+function mergeDuplicateAlbums(projects: Project[]): { list: Project[]; merged: number } {
+  const byKey = new Map<string, Project>();
+  const out: Project[] = [];
+  let merged = 0;
+  for (const p of projects) {
+    const k = albumKey(p.name, p.artist, p.discNumber);
+    const prev = byKey.get(k);
+    if (!prev) { const copy = { ...p, tracks: [...p.tracks] }; byKey.set(k, copy); out.push(copy); continue; }
+    merged++;
+    const seen = new Set(prev.tracks.map(t => trackKey(t.name)));
+    for (const t of p.tracks) if (!seen.has(trackKey(t.name))) { prev.tracks.push(t); seen.add(trackKey(t.name)); }
+    prev.coverDataUrl ||= p.coverDataUrl;
+    prev.genre ||= p.genre; prev.year ||= p.year;
+  }
+  return { list: out, merged };
+}
+
+/** Scans folders and adds every song not already in the library. */
+async function importFromFolders(
+  current: Project[],
+  sources: string[],
+  onProgress?: (msg: string) => void,
+): Promise<{ list: Project[]; added: number; merged: number }> {
+  const known = new Set<string>();
+  for (const p of current) for (const t of p.tracks) if (t.filePath) known.add(`${t.source || MAIN_SOURCE}|${t.filePath}`);
+  const list = current.map(p => ({ ...p, tracks: [...p.tracks] }));
+  const byKey = new Map(list.map(p => [albumKey(p.name, p.artist, p.discNumber), p] as const));
+  const order = new Map<string, number>();
+  let added = 0;
+  for (const source of sources) {
+    const files = await scanFolderFiles(source, n => onProgress?.(`Found ${n} files…`));
+    let i = 0;
+    for (const { path, file } of files) {
+      i++;
+      if (known.has(`${source}|${path}`)) continue;
+      if (i % 5 === 0) onProgress?.(`Reading ${i}/${files.length}…`);
+      const tags = await readId3Tags(file);
+      const base = path.split("/").pop()!.replace(/\.[^.]+$/, "");
+      const title = tags.title || base;
+      const artist = tags.albumArtist || tags.artist || "Unknown Artist";
+      const albumName = tags.album || (path.includes("/") ? path.split("/").slice(-2, -1)[0] : "") || title;
+      const k = albumKey(albumName, artist, tags.disc);
+      let proj = byKey.get(k);
+      if (!proj) {
+        proj = {
+          id: genId(), name: albumName, artist, coverDataUrl: null, tracks: [], createdAt: Date.now(),
+          isSingle: !tags.album && !path.includes("/"), discNumber: tags.disc, genre: tags.genre, year: tags.year,
+        };
+        byKey.set(k, proj); list.push(proj);
+      }
+      // Same song already in this album (e.g. copy in another folder) → skip.
+      if (proj.tracks.some(t => trackKey(t.name) === trackKey(title))) { known.add(`${source}|${path}`); continue; }
+      if (!proj.coverDataUrl && tags.cover) {
+        try { proj.coverDataUrl = (await resizeCover(new File([tags.cover], "cover", { type: tags.cover.type }))) || null; } catch { /* bad image */ }
+      }
+      proj.genre ||= tags.genre; proj.year ||= tags.year;
+      const id = genId();
+      const track: Track = { id, name: title, audioKey: `audio_${id}`, filePath: path, source, duration: await getAudioDuration(file), lyrics: tags.lyrics };
+      if (tags.track) order.set(id, tags.track);
+      proj.tracks.push(track);
+      known.add(`${source}|${path}`);
+      added++;
+    }
+  }
+  for (const p of list) {
+    if (p.tracks.some(t => order.has(t.id))) {
+      const old = p.tracks.filter(t => !order.has(t.id));
+      const fresh = p.tracks.filter(t => order.has(t.id)).sort((a, b) => order.get(a.id)! - order.get(b.id)!);
+      p.tracks = [...old, ...fresh];
+    }
+  }
+  const m = mergeDuplicateAlbums(list);
+  return { list: m.list, added, merged: m.merged };
+}
+
+/** Lets settings trigger the app-level folder sync. */
+const folderSyncRef: { current: (quiet?: boolean) => Promise<void> } = { current: async () => {} };
 
 // ── Utils ──────────────────────────────────────────────────────────────────
 
@@ -1640,6 +1730,60 @@ export default function App() {
     setToast({ msg, id });
     setTimeout(() => setToast(t => t?.id === id ? null : t), 2800);
   }, []);
+
+  // Scan every connected folder for songs + tags and add anything new.
+  const syncingRef = useRef(false);
+  const syncFolders = useCallback(async (quiet = false) => {
+    if (syncingRef.current || !isFsSupported()) return;
+    const folders = (await listFolders()).filter(f => f.perm === "granted");
+    if (!folders.length) return;
+    syncingRef.current = true;
+    try {
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const snap = projectsRef.current;
+        const res = await importFromFolders(snap, folders.map(f => f.id));
+        if (projectsRef.current !== snap) continue; // library changed meanwhile, redo
+        if (res.added || res.merged) {
+          setProjects(res.list);
+          if (!quiet || res.added) showToast(`Added ${res.added} song${res.added === 1 ? "" : "s"} from your folders${res.merged ? ` · merged ${res.merged} duplicate album${res.merged === 1 ? "" : "s"}` : ""}`);
+        } else if (!quiet) showToast("Library is up to date");
+        break;
+      }
+    } catch (err) {
+      console.error("Folder sync failed", err);
+    } finally {
+      syncingRef.current = false;
+    }
+  }, [showToast]);
+  folderSyncRef.current = syncFolders;
+
+  // Folders lose access after a browser restart. Re-grant on the first click or
+  // key press (browsers only allow this from a gesture), then rescan — songs
+  // are never removed just because a folder is temporarily disconnected.
+  useEffect(() => {
+    if (!hydrated || !isFsSupported()) return;
+    let done = false;
+    const onGesture = async () => {
+      if (done) return;
+      done = true;
+      cleanup();
+      if (await anyFolderNeedsPermission()) await requestAllPermissions();
+      void syncFolders(true);
+    };
+    const cleanup = () => {
+      window.removeEventListener("pointerdown", onGesture, true);
+      window.removeEventListener("keydown", onGesture, true);
+    };
+    void (async () => {
+      if (await anyFolderNeedsPermission()) {
+        window.addEventListener("pointerdown", onGesture, true);
+        window.addEventListener("keydown", onGesture, true);
+      } else { done = true; void syncFolders(true); }
+    })();
+    return cleanup;
+  }, [hydrated, syncFolders]);
+
+
 
   // ── Queue management ───────────────────────────────────────────────────
   const addToFront = useCallback((projectId: string, trackIndex: number) => {
@@ -6583,7 +6727,7 @@ function SettingsView({ projects, setProjects, showToast, player, setPlayer, aud
 
       {/* ── Music folder ── */}
       {settingsTab === "system" && (
-        <MusicFolderSection projects={projects} setProjects={setProjects} showToast={showToast} />
+        <MusicFolderSection projects={projects} setProjects={setProjects} showToast={showToast} onSync={(q) => folderSyncRef.current(q)} />
       )}
 
       {/* ── Storage ── */}
@@ -8646,7 +8790,8 @@ function AlbumForm({ onClose, onCreate }: { onClose: () => void; onCreate: (p: P
   );
 }
 
-function MusicFolderSection({ projects, setProjects, showToast }: {
+function MusicFolderSection({ projects, setProjects, showToast, onSync }: {
+  onSync?: (quiet?: boolean) => Promise<void>;
   projects: Project[];
   setProjects: React.Dispatch<React.SetStateAction<Project[]>>;
   showToast: (m: string) => void;
@@ -8657,10 +8802,39 @@ function MusicFolderSection({ projects, setProjects, showToast }: {
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<string | null>(null);
 
+  const [all, setAll] = useState<FolderInfo[]>([]);
+  const [syncing, setSyncing] = useState(false);
   const refresh = useCallback(async () => {
     setFolder(await getSavedLibraryName());
     setPerm(await libraryPermissionState());
+    setAll(await listFolders());
   }, []);
+  const extrasList = all.filter(f => f.role === "extra");
+  const needsAccess = all.some(f => f.perm !== "granted");
+  const sync = async () => {
+    setSyncing(true);
+    await requestAllPermissions();
+    await refresh();
+    await onSync?.(false);
+    setSyncing(false);
+  };
+  const addExtra = async () => {
+    const res = await addExtraFolder();
+    await refresh();
+    if (!res) return;
+    if (res.id === MAIN_SOURCE) { showToast("That's already your main folder"); return; }
+    showToast(`Added "${res.name}" — scanning…`);
+    setSyncing(true); await onSync?.(false); setSyncing(false);
+  };
+  const removeExtra = async (f: FolderInfo) => {
+    if (!window.confirm(`Remove "${f.name}" and its songs from the library? Files stay on your computer.`)) return;
+    await removeExtraFolder(f.id);
+    setProjects(prev => prev
+      .map(p => ({ ...p, tracks: p.tracks.filter(t => t.source !== f.id) }))
+      .filter(p => p.tracks.length > 0 || !prev.find(x => x.id === p.id)?.tracks.some(t => t.source === f.id)));
+    await refresh();
+    showToast(`Removed "${f.name}"`);
+  };
 
   useEffect(() => { void refresh(); }, [refresh]);
 
@@ -8674,9 +8848,15 @@ function MusicFolderSection({ projects, setProjects, showToast }: {
   };
 
   const reconnect = async () => {
-    const dir = await getLibraryDir(true);
-    if (dir) showToast("Music folder reconnected");
+    const ok = await requestAllPermissions();
+    if (ok) showToast("Folders reconnected");
     await refresh();
+    if (ok) void onSync?.(true);
+  };
+  const dedupe = () => {
+    const { list, merged } = mergeDuplicateAlbums(projects);
+    if (merged) setProjects(list);
+    showToast(merged ? `Merged ${merged} duplicate album${merged === 1 ? "" : "s"}` : "No duplicate albums found");
   };
 
   const migrate = async () => {
@@ -8747,7 +8927,46 @@ function MusicFolderSection({ projects, setProjects, showToast }: {
                 {folder ? "Change" : "Choose folder"}
               </button>
             </div>
-            {folder && perm === "prompt" && (
+            {extrasList.map(f => (
+              <div key={f.id} className="flex items-center justify-between gap-4 px-5 py-4">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold truncate">{f.name}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Extra folder · songs only{f.perm !== "granted" ? " · access needed" : ""}
+                  </p>
+                </div>
+                <button
+                  onClick={() => removeExtra(f)}
+                  className="shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold text-destructive hover:bg-destructive/10 transition"
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+            <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold">Other folders</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Add folders of songs — tags are read and albums built automatically.</p>
+              </div>
+              <div className="flex gap-2 shrink-0">
+                <button onClick={addExtra} className="px-3 py-1.5 rounded-full text-xs font-semibold bg-secondary hover:bg-secondary/70 transition">
+                  Add folder
+                </button>
+                <button onClick={sync} disabled={syncing || all.length === 0} className="px-3 py-1.5 rounded-full text-xs font-semibold bg-primary text-primary-foreground hover:opacity-90 transition disabled:opacity-50">
+                  {syncing ? "Scanning…" : "Rescan all"}
+                </button>
+              </div>
+            </div>
+            <div className="flex items-center justify-between gap-4 px-5 py-4">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold">Duplicate albums</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Combine albums with the same name, artist and disc.</p>
+              </div>
+              <button onClick={dedupe} className="shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold bg-secondary hover:bg-secondary/70 transition">
+                Merge
+              </button>
+            </div>
+            {(needsAccess || (folder && perm === "prompt")) && (
               <div className="flex items-center justify-between gap-4 px-5 py-4">
                 <div className="min-w-0">
                   <p className="text-sm font-semibold">Access needed</p>
