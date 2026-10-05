@@ -152,7 +152,7 @@ function termLen(enc: number, b: Uint8Array, from: number): number {
   return b.length - from;
 }
 
-const syncsafe = (b: Uint8Array, o: number) =>
+const ssafe = (b: Uint8Array, o: number) =>
   ((b[o] & 0x7f) << 21) | ((b[o + 1] & 0x7f) << 14) | ((b[o + 2] & 0x7f) << 7) | (b[o + 3] & 0x7f);
 
 const GENRES = ["Blues","Classic Rock","Country","Dance","Disco","Funk","Grunge","Hip-Hop","Jazz","Metal","New Age","Oldies","Other","Pop","R&B","Rap","Reggae","Rock","Techno","Industrial","Alternative","Ska","Death Metal","Pranks","Soundtrack","Euro-Techno","Ambient","Trip-Hop","Vocal","Jazz+Funk","Fusion","Trance","Classical","Instrumental","Acid","House","Game","Sound Clip","Gospel","Noise","Alternative Rock","Bass","Soul","Punk","Space","Meditative","Instrumental Pop","Instrumental Rock","Ethnic","Gothic","Darkwave","Techno-Industrial","Electronic","Pop-Folk","Eurodance","Dream","Southern Rock","Comedy","Cult","Gangsta","Top 40","Christian Rap","Pop/Funk","Jungle","Native American","Cabaret","New Wave","Psychedelic","Rave","Showtunes","Trailer","Lo-Fi","Tribal","Acid Punk","Acid Jazz","Polka","Retro","Musical","Rock & Roll","Hard Rock"];
@@ -170,11 +170,11 @@ export async function readId3Tags(file: Blob): Promise<ReadTags> {
     const head = new Uint8Array(await file.slice(0, 10).arrayBuffer());
     if (head[0] !== 0x49 || head[1] !== 0x44 || head[2] !== 0x33) return out;
     const ver = head[3];
-    const size = syncsafe(head, 6);
+    const size = ssafe(head, 6);
     if (size <= 0 || size > 40_000_000) return out;
     const b = new Uint8Array(await file.slice(10, 10 + size).arrayBuffer());
     let p = 0;
-    if (head[5] & 0x40 && ver >= 3) p += ver === 4 ? syncsafe(b, 0) : ((b[0] << 24) | (b[1] << 16) | (b[2] << 8) | b[3]) + 4;
+    if (head[5] & 0x40 && ver >= 3) p += ver === 4 ? ssafe(b, 0) : ((b[0] << 24) | (b[1] << 16) | (b[2] << 8) | b[3]) + 4;
     const idLen = ver === 2 ? 3 : 4;
     const hdrLen = ver === 2 ? 6 : 10;
     const map: Record<string, keyof ReadTags> = ver === 2
@@ -184,7 +184,7 @@ export async function readId3Tags(file: Blob): Promise<ReadTags> {
       const id = String.fromCharCode(...b.subarray(p, p + idLen));
       if (!/^[A-Z0-9]+$/.test(id)) break;
       const fsz = ver === 2 ? (b[p + 3] << 16) | (b[p + 4] << 8) | b[p + 5]
-        : ver === 4 ? syncsafe(b, p + 4) : ((b[p + 4] << 24) | (b[p + 5] << 16) | (b[p + 6] << 8) | b[p + 7]) >>> 0;
+        : ver === 4 ? ssafe(b, p + 4) : ((b[p + 4] << 24) | (b[p + 5] << 16) | (b[p + 6] << 8) | b[p + 7]) >>> 0;
       const start = p + hdrLen;
       if (fsz <= 0 || start + fsz > b.length) break;
       const f = b.subarray(start, start + fsz);
