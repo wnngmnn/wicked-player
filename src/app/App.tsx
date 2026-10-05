@@ -1643,6 +1643,32 @@ export default function App() {
     };
   }, []);
 
+  // Folders lose access after a browser restart. Re-grant on the first click or
+  // key press (browsers only allow this from a gesture), then rescan — songs
+  // are never removed just because a folder is temporarily disconnected.
+  useEffect(() => {
+    if (!hydrated || !isFsSupported()) return;
+    let done = false;
+    const onGesture = async () => {
+      if (done) return;
+      done = true;
+      cleanup();
+      if (await anyFolderNeedsPermission()) await requestAllPermissions();
+      void syncFolders(true);
+    };
+    const cleanup = () => {
+      window.removeEventListener("pointerdown", onGesture, true);
+      window.removeEventListener("keydown", onGesture, true);
+    };
+    void (async () => {
+      if (await anyFolderNeedsPermission()) {
+        window.addEventListener("pointerdown", onGesture, true);
+        window.addEventListener("keydown", onGesture, true);
+      } else { done = true; void syncFolders(true); }
+    })();
+    return cleanup;
+  }, [hydrated, syncFolders]);
+
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -1727,6 +1753,32 @@ export default function App() {
     setToast({ msg, id });
     setTimeout(() => setToast(t => t?.id === id ? null : t), 2800);
   }, []);
+
+  // Scan every connected folder for songs + tags and add anything new.
+  const syncingRef = useRef(false);
+  const syncFolders = useCallback(async (quiet = false) => {
+    if (syncingRef.current || !isFsSupported()) return;
+    const folders = (await listFolders()).filter(f => f.perm === "granted");
+    if (!folders.length) return;
+    syncingRef.current = true;
+    try {
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const snap = projectsRef.current;
+        const res = await importFromFolders(snap, folders.map(f => f.id));
+        if (projectsRef.current !== snap) continue; // library changed meanwhile, redo
+        if (res.added || res.merged) {
+          setProjects(res.list);
+          if (!quiet || res.added) showToast(`Added ${res.added} song${res.added === 1 ? "" : "s"} from your folders${res.merged ? ` · merged ${res.merged} duplicate album${res.merged === 1 ? "" : "s"}` : ""}`);
+        } else if (!quiet) showToast("Library is up to date");
+        break;
+      }
+    } catch (err) {
+      console.error("Folder sync failed", err);
+    } finally {
+      syncingRef.current = false;
+    }
+  }, [showToast]);
+
 
   // ── Queue management ───────────────────────────────────────────────────
   const addToFront = useCallback((projectId: string, trackIndex: number) => {
@@ -6670,7 +6722,7 @@ function SettingsView({ projects, setProjects, showToast, player, setPlayer, aud
 
       {/* ── Music folder ── */}
       {settingsTab === "system" && (
-        <MusicFolderSection projects={projects} setProjects={setProjects} showToast={showToast} />
+        <MusicFolderSection projects={projects} setProjects={setProjects} showToast={showToast} onSync={syncFolders} />
       )}
 
       {/* ── Storage ── */}
@@ -8733,7 +8785,8 @@ function AlbumForm({ onClose, onCreate }: { onClose: () => void; onCreate: (p: P
   );
 }
 
-function MusicFolderSection({ projects, setProjects, showToast }: {
+function MusicFolderSection({ projects, setProjects, showToast, onSync }: {
+  onSync?: (quiet?: boolean) => Promise<void>;
   projects: Project[];
   setProjects: React.Dispatch<React.SetStateAction<Project[]>>;
   showToast: (m: string) => void;
