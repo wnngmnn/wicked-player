@@ -16,7 +16,6 @@ type PermissionState = "granted" | "denied" | "prompt";
 interface DirHandle extends FileSystemDirectoryHandle {
   queryPermission?: (opts: { mode: "read" | "readwrite" }) => Promise<PermissionState>;
   requestPermission?: (opts: { mode: "read" | "readwrite" }) => Promise<PermissionState>;
-  values?: () => AsyncIterableIterator<FileSystemHandle>;
 }
 
 interface ExtraEntry { id: string; handle: DirHandle }
@@ -298,7 +297,7 @@ export async function scanFolderFiles(
   if (!dir) return [];
   const out: { path: string; file: File }[] = [];
   const walk = async (d: DirHandle, prefix: string, depth: number) => {
-    if (depth > 12 || !d.values) return;
+    if (depth > 12) return;
     for await (const entry of d.values()) {
       if (entry.name.startsWith(".")) continue;
       if (entry.kind === "directory") {
