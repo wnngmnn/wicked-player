@@ -377,6 +377,9 @@ async function importFromFolders(
   return { list: m.list, added, merged: m.merged };
 }
 
+/** Lets settings trigger the app-level folder sync. */
+const folderSyncRef: { current: (quiet?: boolean) => Promise<void> } = { current: async () => {} };
+
 // ── Utils ──────────────────────────────────────────────────────────────────
 
 const genId = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
@@ -1752,6 +1755,7 @@ export default function App() {
       syncingRef.current = false;
     }
   }, [showToast]);
+  folderSyncRef.current = syncFolders;
 
   // Folders lose access after a browser restart. Re-grant on the first click or
   // key press (browsers only allow this from a gesture), then rescan — songs
@@ -6723,7 +6727,7 @@ function SettingsView({ projects, setProjects, showToast, player, setPlayer, aud
 
       {/* ── Music folder ── */}
       {settingsTab === "system" && (
-        <MusicFolderSection projects={projects} setProjects={setProjects} showToast={showToast} onSync={syncFolders} />
+        <MusicFolderSection projects={projects} setProjects={setProjects} showToast={showToast} onSync={(q) => folderSyncRef.current(q)} />
       )}
 
       {/* ── Storage ── */}
