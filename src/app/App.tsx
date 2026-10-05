@@ -8798,10 +8798,39 @@ function MusicFolderSection({ projects, setProjects, showToast, onSync }: {
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<string | null>(null);
 
+  const [all, setAll] = useState<FolderInfo[]>([]);
+  const [syncing, setSyncing] = useState(false);
   const refresh = useCallback(async () => {
     setFolder(await getSavedLibraryName());
     setPerm(await libraryPermissionState());
+    setAll(await listFolders());
   }, []);
+  const extrasList = all.filter(f => f.role === "extra");
+  const needsAccess = all.some(f => f.perm !== "granted");
+  const sync = async () => {
+    setSyncing(true);
+    await requestAllPermissions();
+    await refresh();
+    await onSync?.(false);
+    setSyncing(false);
+  };
+  const addExtra = async () => {
+    const res = await addExtraFolder();
+    await refresh();
+    if (!res) return;
+    if (res.id === MAIN_SOURCE) { showToast("That's already your main folder"); return; }
+    showToast(`Added "${res.name}" — scanning…`);
+    setSyncing(true); await onSync?.(false); setSyncing(false);
+  };
+  const removeExtra = async (f: FolderInfo) => {
+    if (!window.confirm(`Remove "${f.name}" and its songs from the library? Files stay on your computer.`)) return;
+    await removeExtraFolder(f.id);
+    setProjects(prev => prev
+      .map(p => ({ ...p, tracks: p.tracks.filter(t => t.source !== f.id) }))
+      .filter(p => p.tracks.length > 0 || !prev.find(x => x.id === p.id)?.tracks.some(t => t.source === f.id)));
+    await refresh();
+    showToast(`Removed "${f.name}"`);
+  };
 
   useEffect(() => { void refresh(); }, [refresh]);
 
@@ -8815,9 +8844,15 @@ function MusicFolderSection({ projects, setProjects, showToast, onSync }: {
   };
 
   const reconnect = async () => {
-    const dir = await getLibraryDir(true);
-    if (dir) showToast("Music folder reconnected");
+    const ok = await requestAllPermissions();
+    if (ok) showToast("Folders reconnected");
     await refresh();
+    if (ok) void onSync?.(true);
+  };
+  const dedupe = () => {
+    const { list, merged } = mergeDuplicateAlbums(projects);
+    if (merged) setProjects(list);
+    showToast(merged ? `Merged ${merged} duplicate album${merged === 1 ? "" : "s"}` : "No duplicate albums found");
   };
 
   const migrate = async () => {
@@ -8888,7 +8923,46 @@ function MusicFolderSection({ projects, setProjects, showToast, onSync }: {
                 {folder ? "Change" : "Choose folder"}
               </button>
             </div>
-            {folder && perm === "prompt" && (
+            {extrasList.map(f => (
+              <div key={f.id} className="flex items-center justify-between gap-4 px-5 py-4">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold truncate">{f.name}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Extra folder · songs only{f.perm !== "granted" ? " · access needed" : ""}
+                  </p>
+                </div>
+                <button
+                  onClick={() => removeExtra(f)}
+                  className="shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold text-destructive hover:bg-destructive/10 transition"
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+            <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold">Other folders</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Add folders of songs — tags are read and albums built automatically.</p>
+              </div>
+              <div className="flex gap-2 shrink-0">
+                <button onClick={addExtra} className="px-3 py-1.5 rounded-full text-xs font-semibold bg-secondary hover:bg-secondary/70 transition">
+                  Add folder
+                </button>
+                <button onClick={sync} disabled={syncing || all.length === 0} className="px-3 py-1.5 rounded-full text-xs font-semibold bg-primary text-primary-foreground hover:opacity-90 transition disabled:opacity-50">
+                  {syncing ? "Scanning…" : "Rescan all"}
+                </button>
+              </div>
+            </div>
+            <div className="flex items-center justify-between gap-4 px-5 py-4">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold">Duplicate albums</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Combine albums with the same name, artist and disc.</p>
+              </div>
+              <button onClick={dedupe} className="shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold bg-secondary hover:bg-secondary/70 transition">
+                Merge
+              </button>
+            </div>
+            {(needsAccess || (folder && perm === "prompt")) && (
               <div className="flex items-center justify-between gap-4 px-5 py-4">
                 <div className="min-w-0">
                   <p className="text-sm font-semibold">Access needed</p>
