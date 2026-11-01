@@ -4048,7 +4048,7 @@ function ShareView({ projects, player, playTrack, nav, projectId }: SharedProps 
 
 // ── AllTracksView ──────────────────────────────────────────────────────────
 
-function AllTracksView({ projects, player, playTrack, nav, sidebarOpen, toggleLike, isLiked, toggleFavorite, isFavorited, addToFront, addToBack }: SharedProps & { sidebarOpen: boolean; toggleLike: (pid: string, tid: string) => void; isLiked: (pid: string, tid: string) => boolean; toggleFavorite: (type: "album"|"playlist", id: string) => void; isFavorited: (type: "album"|"playlist", id: string) => boolean; addToFront?: (pid: string, tidx: number) => void; addToBack?: (pid: string, tidx: number) => void; }) {
+function AllTracksView({ projects, player, playTrack, nav, sidebarOpen, toggleLike, isLiked, toggleFavorite, isFavorited, addToFront, addToBack, deleteSingle }: SharedProps & { sidebarOpen: boolean; toggleLike: (pid: string, tid: string) => void; isLiked: (pid: string, tid: string) => boolean; toggleFavorite: (type: "album"|"playlist", id: string) => void; isFavorited: (type: "album"|"playlist", id: string) => boolean; addToFront?: (pid: string, tidx: number) => void; addToBack?: (pid: string, tidx: number) => void; deleteSingle?: (projectId: string) => void | Promise<void>; }) {
   const [query, setQuery] = useState("");
   const [trackSort, setTrackSort] = useState<TrackSort>("default");
 
