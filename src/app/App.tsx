@@ -1845,6 +1845,45 @@ export default function App() {
     favorites.some(f => f.type === type && f.id === id),
   [favorites]);
 
+  /** Removes a single from the library: its file, its entry, and every reference to it. */
+  const deleteSingle = useCallback(async (projectId: string) => {
+    const proj = projectsRef.current.find(p => p.id === projectId);
+    if (!proj) return;
+    if (!window.confirm(`Delete "${proj.name}" from your library? Its file in your music folder is removed too.`)) return;
+
+    for (const t of proj.tracks) await deleteTrackFile(t);
+
+    setProjects(prev => prev.filter(p => p.id !== projectId));
+    setPlaylists(prev => prev.map(pl =>
+      pl.items.some(i => i.projectId === projectId)
+        ? { ...pl, items: pl.items.filter(i => i.projectId !== projectId) }
+        : pl
+    ));
+    setLikedSongs(prev => prev.filter(s => s.projectId !== projectId));
+    setFavorites(prev => prev.filter(f => !(f.type === "album" && f.id === projectId)));
+    setFolders(prev => prev
+      .map(f => ({ ...f, projectIds: f.projectIds.filter(id => id !== projectId) }))
+      .filter(f => f.projectIds.length > 0));
+
+    // Drop it from the player: stop if it's the one playing, otherwise just
+    // lift it out of the queue so playback never lands on a missing file.
+    if (playerRef.current.projectId === projectId) {
+      audioRef.current?.pause();
+    }
+    setPlayer(p => {
+      if (p.projectId === projectId) {
+        return { ...p, projectId: null, trackIndex: 0, isPlaying: false, currentTime: 0, duration: 0, queue: [], queuePos: 0 };
+      }
+      if (!p.queue.some(i => i.projectId === projectId)) return p;
+      const removedBefore = p.queue.slice(0, p.queuePos).filter(i => i.projectId === projectId).length;
+      const queue = p.queue.filter(i => i.projectId !== projectId);
+      return { ...p, queue, queuePos: Math.max(0, Math.min(p.queuePos - removedBefore, queue.length - 1)) };
+    });
+
+    showToast("Single deleted");
+  }, [showToast]);
+
+
   const playTrack = useCallback(async (
     projectId: string,
     trackIndex: number,
@@ -2218,8 +2257,9 @@ export default function App() {
                   </>
                 )}
                 {sidebarTab === "library" && (
-                  <AllTracksView {...shared} sidebarOpen={sidebarOpen} toggleLike={toggleLike} isLiked={isLiked} toggleFavorite={toggleFavorite} isFavorited={isFavorited} addToFront={addToFront} addToBack={addToBack} />
+                  <AllTracksView {...shared} sidebarOpen={sidebarOpen} toggleLike={toggleLike} isLiked={isLiked} toggleFavorite={toggleFavorite} isFavorited={isFavorited} addToFront={addToFront} addToBack={addToBack} deleteSingle={deleteSingle} />
                 )}
+
                 {sidebarTab === "playlists" && (
                   <PlaylistsView
                     playlists={playlists}
@@ -3383,8 +3423,9 @@ function ProjectView({ projects, setProjects, player, playTrack, nav, showToast,
         <div className="mt-14 pt-6 border-t border-border/40">
           <button onClick={handleDeleteProject} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-destructive transition-colors font-medium">
             <Trash2 size={13} />
-            Delete Project
+            {project.isSingle ? "Delete Single" : "Delete Project"}
           </button>
+
         </div>
       </div>
     </div>
@@ -4007,7 +4048,7 @@ function ShareView({ projects, player, playTrack, nav, projectId }: SharedProps 
 
 // ── AllTracksView ──────────────────────────────────────────────────────────
 
-function AllTracksView({ projects, player, playTrack, nav, sidebarOpen, toggleLike, isLiked, toggleFavorite, isFavorited, addToFront, addToBack }: SharedProps & { sidebarOpen: boolean; toggleLike: (pid: string, tid: string) => void; isLiked: (pid: string, tid: string) => boolean; toggleFavorite: (type: "album"|"playlist", id: string) => void; isFavorited: (type: "album"|"playlist", id: string) => boolean; addToFront?: (pid: string, tidx: number) => void; addToBack?: (pid: string, tidx: number) => void; }) {
+function AllTracksView({ projects, player, playTrack, nav, sidebarOpen, toggleLike, isLiked, toggleFavorite, isFavorited, addToFront, addToBack, deleteSingle }: SharedProps & { sidebarOpen: boolean; toggleLike: (pid: string, tid: string) => void; isLiked: (pid: string, tid: string) => boolean; toggleFavorite: (type: "album"|"playlist", id: string) => void; isFavorited: (type: "album"|"playlist", id: string) => boolean; addToFront?: (pid: string, tidx: number) => void; addToBack?: (pid: string, tidx: number) => void; deleteSingle?: (projectId: string) => void | Promise<void>; }) {
   const [query, setQuery] = useState("");
   const [trackSort, setTrackSort] = useState<TrackSort>("default");
 
@@ -4165,7 +4206,20 @@ function AllTracksView({ projects, player, playTrack, nav, sidebarOpen, toggleLi
                         />
                       </div>
                     )}
+
+                    {/* Singles can be removed straight from the library list */}
+                    {proj.isSingle && deleteSingle && (
+                      <button
+                        onClick={e => { e.stopPropagation(); void deleteSingle(proj.id); }}
+                        title="Delete single"
+                        aria-label={`Delete ${proj.name}`}
+                        className="opacity-0 group-hover:opacity-100 p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all active:scale-90 shrink-0"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    )}
                   </div>
+
                 );
               })}
             </div>
