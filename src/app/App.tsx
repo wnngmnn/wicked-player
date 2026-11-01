@@ -9046,8 +9046,22 @@ function SingleForm({ onClose, onCreate }: { onClose: () => void; onCreate: (p: 
     if (!canSubmit || !audioFile) return;
     setUploading(true);
     const id = genId();
-    const { audioKey, filePath } = await saveTrackFile(id, audioFile);
-    const duration = await getAudioDuration(audioFile);
+    // Singles get only cover, title, artist and year written into the file.
+    let fileToSave: File = audioFile;
+    if (supportsId3(audioFile.name, audioFile.type)) {
+      try {
+        const coverBytes = await coverBytesFor({ coverDataUrl: cover } as Project);
+        const tagged = await writeId3Tags(audioFile, {
+          title: title.trim(),
+          artist: artist.trim() || undefined,
+          year: new Date().getFullYear(),
+          cover: coverBytes,
+        });
+        fileToSave = new File([tagged], audioFile.name, { type: audioFile.type || "audio/mpeg" });
+      } catch { /* keep original file if tagging fails */ }
+    }
+    const { audioKey, filePath } = await saveTrackFile(id, fileToSave);
+    const duration = await getAudioDuration(fileToSave);
     onCreate({
       id,
       name: title.trim(),
