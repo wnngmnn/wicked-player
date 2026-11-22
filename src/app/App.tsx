@@ -19,6 +19,7 @@ import {
   requestAllPermissions, anyFolderNeedsPermission, scanFolderFiles, MAIN_SOURCE, type FolderInfo,
 } from "./library-fs";
 import { writeId3Tags, supportsId3, readAudioTags } from "./id3";
+import { ensureMp3, isMp3 } from "./mp3";
 import {
   loadCollection, saveCollection, gcCovers, clearAll, storageEstimate,
   requestPersistentStorage, saveCover, releaseAllCoverUrls, type StoreKey,
@@ -3169,8 +3170,9 @@ function ProjectView({ projects, setProjects, player, playTrack, nav, showToast,
     for (const file of Array.from(files)) {
       if (!file.type.includes("audio") && !file.name.match(/\.(mp3|wav|ogg|flac|aac|m4a)$/i)) continue;
       const id = genId();
-      const { audioKey, filePath } = await saveTrackFile(id, file);
-      const duration = await getAudioDuration(file);
+      const mp3 = await ensureMp3(file);
+      const { audioKey, filePath } = await saveTrackFile(id, mp3);
+      const duration = await getAudioDuration(mp3);
       const name = file.name.replace(/\.[^.]+$/, "");
       newTracks.push({ id, name, audioKey, filePath, duration });
     }
@@ -8921,6 +8923,59 @@ function MusicFolderSection({ projects, setProjects, showToast, onSync }: {
     showToast(merged ? `Merged ${merged} duplicate album${merged === 1 ? "" : "s"}` : "No duplicate albums found");
   };
 
+  const [tagAllMsg, setTagAllMsg] = useState<string | null>(null);
+  const tagAll = async () => {
+    const dir = await getLibraryDir(true);
+    if (!dir) { showToast("Choose a music folder first"); return; }
+    const isMain = (t: Track) => !t.source || t.source === MAIN_SOURCE;
+    const total = projects.reduce((n, p) => n + p.tracks.filter(isMain).length, 0);
+    if (!total) { showToast("No songs in the main folder"); return; }
+    let done = 0, converted = 0, tagged = 0, failed = 0;
+    const updated: Project[] = [];
+    for (const proj of projects) {
+      const tracks: Track[] = [];
+      for (const t of proj.tracks) {
+        if (!isMain(t)) { tracks.push(t); continue; }
+        setTagAllMsg(`Working ${++done}/${total}…`);
+        let next = t;
+        try {
+          if (!isMp3(t.filePath)) {
+            const src = await loadTrackFile(t);
+            if (src) {
+              const mp3 = await ensureMp3(new File([src], (t.filePath ?? `${t.name}.m4a`).split("/").pop()!, { type: src.type }));
+              if (isMp3(mp3.name)) {
+                const filePath = await writeAudioFile(dir, t.id, mp3, mp3.name);
+                await deleteTrackFile(t);
+                next = { ...t, filePath, source: undefined };
+                converted++;
+              }
+            }
+          }
+          if (isMp3(next.filePath)) {
+            if (proj.isSingle) {
+              const src = await loadTrackFile(next);
+              if (!src || !next.filePath) { failed++; tracks.push(next); continue; }
+              const out = await writeId3Tags(src, {
+                title: next.name, artist: proj.artist || undefined,
+                year: proj.year || new Date(proj.createdAt).getFullYear(),
+                cover: await coverBytesFor(proj),
+              });
+              if (await overwriteAudioFile(next.filePath, out, next.source)) tagged++; else failed++;
+              tracks.push(next); continue;
+            }
+            const r = await tagTracks({ ...proj, tracks: proj.tracks.map(x => x.id === t.id ? next : x) }, [next]);
+            tagged += r.tagged; failed += r.skipped;
+          } else failed++;
+        } catch (err) { console.error("Tag all failed for", t.name, err); failed++; }
+        tracks.push(next);
+      }
+      updated.push({ ...proj, tracks });
+    }
+    setProjects(updated);
+    setTagAllMsg(null);
+    showToast(`Tagged ${tagged} song${tagged === 1 ? "" : "s"} · ${converted} converted to MP3${failed ? ` · ${failed} skipped` : ""}`);
+  };
+
   const migrate = async () => {
     const dir = await getLibraryDir(true);
     if (!dir) { showToast("Choose a music folder first"); return; }
@@ -9021,6 +9076,15 @@ function MusicFolderSection({ projects, setProjects, showToast, onSync }: {
             </div>
             <div className="flex items-center justify-between gap-4 px-5 py-4">
               <div className="min-w-0">
+                <p className="text-sm font-semibold">Tag all</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Converts every main-folder song that isn't an MP3 to a high-quality MP3 (320 kbps), then writes its tags.</p>
+              </div>
+              <button onClick={tagAll} disabled={!!tagAllMsg} className="shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold bg-primary text-primary-foreground hover:opacity-90 transition disabled:opacity-50">
+                {tagAllMsg ?? "Tag all"}
+              </button>
+            </div>
+            <div className="flex items-center justify-between gap-4 px-5 py-4">
+              <div className="min-w-0">
                 <p className="text-sm font-semibold">Duplicate albums</p>
                 <p className="text-xs text-muted-foreground mt-0.5">Combine albums with the same name, artist and disc.</p>
               </div>
@@ -9101,17 +9165,17 @@ function SingleForm({ onClose, onCreate }: { onClose: () => void; onCreate: (p: 
     setUploading(true);
     const id = genId();
     // Singles get only cover, title, artist and year written into the file.
-    let fileToSave: File = audioFile;
-    if (supportsId3(audioFile.name, audioFile.type)) {
+    let fileToSave: File = await ensureMp3(audioFile);
+    if (supportsId3(fileToSave.name, fileToSave.type)) {
       try {
         const coverBytes = await coverBytesFor({ coverDataUrl: cover } as Project);
-        const tagged = await writeId3Tags(audioFile, {
+        const tagged = await writeId3Tags(fileToSave, {
           title: title.trim(),
           artist: artist.trim() || undefined,
           year: new Date().getFullYear(),
           cover: coverBytes,
         });
-        fileToSave = new File([tagged], audioFile.name, { type: audioFile.type || "audio/mpeg" });
+        fileToSave = new File([tagged], fileToSave.name, { type: "audio/mpeg" });
       } catch { /* keep original file if tagging fails */ }
     }
     const { audioKey, filePath } = await saveTrackFile(id, fileToSave);
