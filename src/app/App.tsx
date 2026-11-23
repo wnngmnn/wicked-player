@@ -10,6 +10,9 @@ import {
   Heart, Star, Globe, Lock, Unlock, Calendar, Tag, FileText, MicVocal
 } from "lucide-react";
 import StatsPanel from "./StatsPanel";
+import AlbumSharePanel from "./AlbumSharePanel";
+import AlbumImportView from "./AlbumImportView";
+import { Button } from "@/components/ui/button";
 import { recordListen, recordPlay, flushStats } from "./stats";
 
 import {
@@ -457,6 +460,7 @@ if (typeof window !== "undefined") {
 
 function parseRoute() {
   const h = window.location.hash.slice(1) || "/";
+  if (h.startsWith("/import/")) return { page: "import" as const, id: h.slice(8) };
   if (h.startsWith("/share/")) return { page: "share" as const, id: h.slice(7) };
   if (h.startsWith("/project/")) return { page: "project" as const, id: h.slice(9) };
   return { page: "home" as const, id: undefined };
@@ -2198,6 +2202,7 @@ export default function App() {
 
           {/* New Project */}
           <div className="px-3 py-4 border-t border-border">
+            <Button variant="outline" className="w-full mb-2" onClick={() => nav("/import/")}><DownloadAlbumIcon />Import Album</Button>
             <button
               onClick={() => setShowCreate(true)}
               className="w-full flex items-center gap-2.5 px-3 py-2.5 bg-primary hover:bg-primary/85 text-white rounded-md text-sm font-semibold transition-all active:scale-95 shadow-md shadow-primary/20"
@@ -2254,6 +2259,9 @@ export default function App() {
                     )}
                     {route.page === "share" && (
                       <ShareView {...shared} projectId={route.id!} />
+                    )}
+                    {route.page === "import" && (
+                      <AlbumImportView key={route.id} token={route.id ?? ""} exists={id => projects.some(p => p.id === id)} onImported={album => { setProjects(prev => prev.some(p => p.id === album.id) ? prev : [album, ...prev]); showToast("Album imported to your music folder"); }} onBack={() => nav("/")} />
                     )}
                   </>
                 )}
@@ -3132,6 +3140,7 @@ function ProjectView({ projects, setProjects, player, playTrack, nav, showToast,
   const [editingTrackId, setEditingTrackId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
   const [showEdit, setShowEdit] = useState(false);
+  const [showShareAlbum, setShowShareAlbum] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [fileDragOver, setFileDragOver] = useState(false);
   const [autoTag, setAutoTag] = useState(true);
@@ -3202,8 +3211,7 @@ function ProjectView({ projects, setProjects, player, playTrack, nav, showToast,
   };
 
   const handleShare = () => {
-    const url = `${window.location.origin}${window.location.pathname}#/share/${projectId}`;
-    navigator.clipboard.writeText(url).then(() => showToast("Share link copied!")).catch(() => { prompt("Copy this link:", url); });
+    setShowShareAlbum(true);
   };
 
   const handleDeleteProject = async () => {
@@ -3239,6 +3247,19 @@ function ProjectView({ projects, setProjects, player, playTrack, nav, showToast,
       onDragLeave={handlePageDragLeave}
       onDrop={handlePageDrop}
     >
+      {showShareAlbum && <AlbumSharePanel album={project} onClose={() => setShowShareAlbum(false)} load={async index => {
+        const track = project.tracks[index];
+        if (!track) throw new Error("Song not found.");
+        const source = await loadTrackFile(track);
+        if (!source) throw new Error(`Reconnect the folder containing "${track.name}" and try again.`);
+        const name = track.filePath ?? `${track.name}${source.type.includes("mpeg") ? ".mp3" : ".audio"}`;
+        const file = new File([source], name, { type: source.type });
+        const mp3 = await ensureMp3(file);
+        if (!isMp3(mp3.name, mp3.type)) throw new Error(`"${track.name}" could not be converted to MP3. No original files were changed.`);
+        const cover = await coverBytesFor(project);
+        return writeId3Tags(mp3, { title: track.name, artist: project.artist, year: project.year, cover,
+          ...(!project.isSingle ? { album: project.name, albumArtist: project.artist, genre: project.genre, disc: project.discNumber, track: index + 1, trackTotal: project.tracks.length } : {}) });
+      }} />}
       {/* File-drop overlay */}
       {fileDragOver && (
         <div className="absolute inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-background/85 backdrop-blur-md border-4 border-dashed border-primary/60 pointer-events-none">
