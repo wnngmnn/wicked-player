@@ -1,9 +1,9 @@
 import { zip, unzip, strToU8, strFromU8 } from 'fflate';
 import { z } from 'zod';
 
-// ZIP volumes stay below 200 MB, even when a single song is larger than that.
-export const VOLUME_BYTES = 180 * 1024 * 1024;
-const MAX_VOLUME_BYTES = 195 * 1024 * 1024;
+// ZIP volumes stay below 95 MB (upload relay request limit), even when a single song is larger than that.
+export const VOLUME_BYTES = 90 * 1024 * 1024;
+const MAX_VOLUME_BYTES = 95 * 1024 * 1024;
 const MAX_PARTS = 200;
 const trackSchema = z.object({ name: z.string().max(1000), duration: z.number().finite().nonnegative(), lyrics: z.string().max(100000).optional(), size: z.number().int().positive() });
 const segmentSchema = z.object({ track: z.number().int().nonnegative(), offset: z.number().int().nonnegative(), size: z.number().int().positive() });
@@ -113,4 +113,12 @@ export async function fetchVolume(id: string, signal: AbortSignal): Promise<Blob
   try { while (true) { const { done, value } = await reader.read(); if (done) break; size += value.length; if (size > MAX_VOLUME_BYTES) throw new Error('Downloaded album part is too large.'); chunks.push(new Uint8Array(value)); } }
   catch (e) { await reader.cancel(); throw e; }
   return new Blob(chunks as BlobPart[], { type: 'application/zip' });
+}
+
+/** Uploads one ZIP part through the app's relay; returns the Pixeldrain file id. */
+export async function uploadVolume(blob: Blob, name: string, signal?: AbortSignal): Promise<string> {
+  const res = await fetch(`/api/public/share-upload?name=${encodeURIComponent(name)}`, { method: 'POST', body: blob, headers: { 'content-type': 'application/zip' }, ...(signal ? { signal } : {}) });
+  const data = await res.json().catch(() => null) as { id?: string; error?: string } | null;
+  if (!res.ok || !data?.id || !/^[A-Za-z0-9]{8}$/.test(data.id)) throw new Error(data?.error ?? `Upload failed (${res.status}). Try again.`);
+  return data.id;
 }

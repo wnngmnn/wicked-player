@@ -1,7 +1,7 @@
 import { test, expect } from 'bun:test';
-import { planVolumes, buildVolume, readVolume, validateManifest, parseFileIds } from '../album-sharing';
+import { planVolumes, buildVolume, readVolume, validateManifest, parseFileIds } from '../src/app/album-sharing';
 test('large album splits under 200MB and round-trips', async () => {
-  const parts = planVolumes([150e6, 150e6].map(Math.round));
+  const parts = planVolumes([80e6, 80e6].map(Math.round));
   expect(parts.length).toBe(2);
   const files = [new Blob([new Uint8Array(3000).fill(7)]), new Blob([new Uint8Array(2000).fill(9)])];
   const lp = planVolumes([3000, 2000], 4000);
