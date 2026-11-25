@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiPublicShareUploadRouteImport } from './routes/api/public/share-upload'
+import { Route as ApiPublicSharedAlbumRouteImport } from './routes/api/public/shared-album'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -22,31 +23,40 @@ const ApiPublicShareUploadRoute = ApiPublicShareUploadRouteImport.update({
   path: '/api/public/share-upload',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicSharedAlbumRoute = ApiPublicSharedAlbumRouteImport.update({
+  id: '/api/public/shared-album',
+  path: '/api/public/shared-album',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/api/public/share-upload': typeof ApiPublicShareUploadRoute
+  '/api/public/shared-album': typeof ApiPublicSharedAlbumRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/api/public/share-upload': typeof ApiPublicShareUploadRoute
+  '/api/public/shared-album': typeof ApiPublicSharedAlbumRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/api/public/share-upload': typeof ApiPublicShareUploadRoute
+  '/api/public/shared-album': typeof ApiPublicSharedAlbumRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/api/public/share-upload'
+  fullPaths: '/' | '/api/public/share-upload' | '/api/public/shared-album'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/public/share-upload'
-  id: '__root__' | '/' | '/api/public/share-upload'
+  to: '/' | '/api/public/share-upload' | '/api/public/shared-album'
+  id: '__root__' | '/' | '/api/public/share-upload' | '/api/public/shared-album'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ApiPublicShareUploadRoute: typeof ApiPublicShareUploadRoute
+  ApiPublicSharedAlbumRoute: typeof ApiPublicSharedAlbumRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -65,12 +75,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicShareUploadRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/shared-album': {
+      id: '/api/public/shared-album'
+      path: '/api/public/shared-album'
+      fullPath: '/api/public/shared-album'
+      preLoaderRoute: typeof ApiPublicSharedAlbumRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ApiPublicShareUploadRoute: ApiPublicShareUploadRoute,
+  ApiPublicSharedAlbumRoute: ApiPublicSharedAlbumRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

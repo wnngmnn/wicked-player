@@ -115,10 +115,27 @@ export async function fetchVolume(id: string, signal: AbortSignal): Promise<Blob
   return new Blob(chunks as BlobPart[], { type: 'application/zip' });
 }
 
-/** Uploads one ZIP part through the app's relay; returns the Pixeldrain file id. */
-export async function uploadVolume(blob: Blob, name: string, signal?: AbortSignal): Promise<string> {
-  const res = await fetch(`/api/public/share-upload?name=${encodeURIComponent(name)}`, { method: 'POST', body: blob, headers: { 'content-type': 'application/zip' }, ...(signal ? { signal } : {}) });
-  const data = await res.json().catch(() => null) as { id?: string; error?: string } | null;
-  if (!res.ok || !data?.id || !/^[A-Za-z0-9]{8}$/.test(data.id)) throw new Error(data?.error ?? `Upload failed (${res.status}). Try again.`);
-  return data.id;
+export async function sharingAction(action: 'begin' | 'finish' | 'cancel', body: unknown, token: string, signal?: AbortSignal): Promise<void> {
+  const response = await fetch(`/api/public/share-upload?action=${action}`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(body), ...(signal ? { signal } : {}) });
+  const data = await response.json().catch(() => null) as { error?: string } | null;
+  if (!response.ok) throw new Error(data?.error ?? 'Sharing failed. Try again.');
+}
+export async function uploadVolume(blob: Blob, share: string, part: number, token: string, signal: AbortSignal): Promise<void> {
+  const response = await fetch(`/api/public/share-upload?share=${encodeURIComponent(share)}&part=${part}`, { method: 'PUT', body: blob, headers: { 'Content-Type': 'application/zip', Authorization: `Bearer ${token}` }, signal });
+  const data = await response.json().catch(() => null) as { error?: string } | null;
+  if (!response.ok) throw new Error(data?.error ?? 'Album upload failed.');
+}
+export function automaticShareUrl(id: string): string { return `${location.origin}${location.pathname}#/import/${id}`; }
+export async function sharedManifest(id: string, signal: AbortSignal): Promise<AlbumManifest> {
+  const response = await fetch(`/api/public/shared-album?share=${encodeURIComponent(id)}`, { signal });
+  const data = await response.json() as { manifest?: unknown; error?: string };
+  if (!response.ok) throw new Error(data.error ?? 'This album link is unavailable.');
+  return validateManifest(data.manifest);
+}
+export async function fetchSharedVolume(id: string, part: number, signal: AbortSignal): Promise<Blob> {
+  const response = await fetch(`/api/public/shared-album?share=${encodeURIComponent(id)}&part=${part}`, { signal });
+  if (!response.ok) { const data = await response.json().catch(() => null) as { error?: string } | null; throw new Error(data?.error ?? 'This album part is unavailable.'); }
+  const blob = await response.blob();
+  if (blob.size > MAX_VOLUME_BYTES) throw new Error('Album part is larger than expected.');
+  return blob;
 }
