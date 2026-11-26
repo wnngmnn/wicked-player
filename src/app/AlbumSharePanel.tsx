@@ -6,7 +6,6 @@ import { prepareAlbum, buildVolume, uploadVolume, automaticShareUrl, sharingActi
 
 import { useSharingAuth, sharingAccessToken } from './sharing/SharingAuth';
 import { lovable } from '@/integrations/lovable';
-import { LovableMark } from '@lovable.dev/cloud-auth-js/react';
 
 export default function AlbumSharePanel({ album, load, onClose }: { album: ShareAlbum; load: (index: number) => Promise<Blob>; onClose: () => void }) {
   const { user, ready } = useSharingAuth();
@@ -46,7 +45,7 @@ export default function AlbumSharePanel({ album, load, onClose }: { album: Share
   };
   useEffect(() => { if (ready && user && !started.current) { started.current = true; void share(); } }, [ready, user]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => () => ctrl.current?.abort(), []);
-  const signIn = async (provider: 'google' | 'lovable') => {
+  const signIn = async (provider: 'google') => {
     setError('');
     if (/^#\/project\/[A-Za-z0-9_-]+$/.test(location.hash)) sessionStorage.setItem('wicked_share_return', location.hash);
     const result = await lovable.auth.signInWithOAuth(provider, { redirect_uri: location.origin });
@@ -60,8 +59,7 @@ export default function AlbumSharePanel({ album, load, onClose }: { album: Share
         <div><p className="font-semibold">{album.tracks.length} songs</p><p className="text-sm text-muted-foreground mt-1">Original quality · Cover and lyrics included</p></div>
       </div>
       {ready && !user && <div className="space-y-2"><p className="text-sm text-muted-foreground">Sign in to share. Your music stays on your computer.</p>
-        <Button variant="outline" className="w-full" onClick={() => signIn('google')}><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18"><path fill="#4285F4" d="M23.49 12.27c0-.79-.07-1.54-.19-2.27H12v4.51h6.47c-.29 1.48-1.14 2.73-2.4 3.58v3h3.86c2.26-2.09 3.56-5.17 3.56-8.82z"/><path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.86-3c-1.08.72-2.45 1.16-4.07 1.16-3.13 0-5.78-2.11-6.73-4.96H1.29v3.09C3.26 21.3 7.31 24 12 24z"/><path fill="#FBBC05" d="M5.27 14.29c-.25-.72-.38-1.49-.38-2.29s.14-1.57.38-2.29V6.62H1.29C.47 8.24 0 10.06 0 12s.47 3.76 1.29 5.38l3.98-3.09z"/><path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.62l3.98 3.09c.95-2.85 3.6-4.96 6.73-4.96z"/></svg>Continue with Google</Button>
-        <Button variant="outline" className="w-full" onClick={() => signIn('lovable')}><LovableMark />Continue with Lovable</Button></div>}
+        <Button variant="outline" className="w-full" onClick={() => signIn('google')}><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18"><path fill="#4285F4" d="M23.49 12.27c0-.79-.07-1.54-.19-2.27H12v4.51h6.47c-.29 1.48-1.14 2.73-2.4 3.58v3h3.86c2.26-2.09 3.56-5.17 3.56-8.82z"/><path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.86-3c-1.08.72-2.45 1.16-4.07 1.16-3.13 0-5.78-2.11-6.73-4.96H1.29v3.09C3.26 21.3 7.31 24 12 24z"/><path fill="#FBBC05" d="M5.27 14.29c-.25-.72-.38-1.49-.38-2.29s.14-1.57.38-2.29V6.62H1.29C.47 8.24 0 10.06 0 12s.47 3.76 1.29 5.38l3.98-3.09z"/><path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.62l3.98 3.09c.95-2.85 3.6-4.96 6.73-4.96z"/></svg>Continue with Google</Button></div>}
       {user && !result && !busy && <Button disabled={!album.tracks.length} onClick={share}><Share2 />Share</Button>}
       {busy && <div className="space-y-2">
         <div className="h-1.5 w-full bg-secondary rounded-full overflow-hidden"><div className="h-full bg-primary transition-all" style={{ width: `${Math.max(pct, 4)}%` }} /></div>

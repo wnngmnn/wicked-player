@@ -10,6 +10,7 @@ import {
   Heart, Star, Globe, Lock, Unlock, Calendar, Tag, FileText, MicVocal, Download as DownloadAlbumIcon
 } from "lucide-react";
 import StatsPanel from "./StatsPanel";
+import SharingAccountCard from "./sharing/SharingAccountCard";
 import AlbumSharePanel from "./AlbumSharePanel";
 import AlbumImportView from "./AlbumImportView";
 import { SharingAuthProvider } from "./sharing/SharingAuth";
@@ -5283,6 +5284,8 @@ function ProfileView({ projects, playlists, likedSongs, favorites, nav, setSideb
             </div>
           </button>
         </div>
+
+        <SharingAccountCard />
 
         {/* Listening stats */}
         <StatsPanel projects={projects} />
