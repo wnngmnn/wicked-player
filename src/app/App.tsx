@@ -12,6 +12,7 @@ import {
 import StatsPanel from "./StatsPanel";
 import AlbumSharePanel from "./AlbumSharePanel";
 import AlbumImportView from "./AlbumImportView";
+import { SharingAuthProvider } from "./sharing/SharingAuth";
 import { Button } from "@/components/ui/button";
 import { recordListen, recordPlay, flushStats } from "./stats";
 
@@ -1604,7 +1605,7 @@ function CassetteLogo({ size = 32 }: { size?: number }) {
 
 // ── App root ───────────────────────────────────────────────────────────────
 
-export default function App() {
+function AppInner() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [hydrated, setHydrated] = useState(false);
@@ -9327,4 +9328,8 @@ function StorageUsageRow() {
       </button>
     </div>
   );
+}
+
+export default function App() {
+  return <SharingAuthProvider><AppInner /></SharingAuthProvider>;
 }

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Download, FolderOpen, ArrowLeft, Music, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { decodeShare, fetchVolume, readVolume, type AlbumManifest } from './album-sharing';
+import { fetchSharedVolume, readVolume, sharedManifest, type AlbumManifest } from './album-sharing';
 import { getLibraryDir, pickLibraryFolder } from './library-fs';
 import { importAlbum, type ImportedAlbum } from './album-import';
 
@@ -11,11 +11,11 @@ export default function AlbumImportView({ token, exists, onImported, onBack }: {
   const [status, setStatus] = useState(''); const [error, setError] = useState(''); const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false); const controller = useRef<AbortController | null>(null); const first = useRef<Blob | null>(null);
   useEffect(() => () => { controller.current?.abort(); first.current = null; }, []);
-  const sources = (signal: AbortSignal) => files.length ? files.map(f => async () => f) : decodeShare(token).map(id => () => fetchVolume(id, signal));
+  const sources = (signal: AbortSignal) => files.length ? files.map(f => async () => f) : (manifest?.parts ?? []).map((_, i) => () => fetchSharedVolume(token, i, signal));
   const review = async () => {
     setBusy(true); setError(''); setStatus('Reading album information…'); const c = new AbortController(); controller.current = c;
-    try { const get = sources(c.signal)[0]; if (!get) throw new Error('Select the Wicked ZIP parts you received.'); const blob = await get(); const volume = await readVolume(blob); c.signal.throwIfAborted(); if (volume.part !== 0) throw new Error('Select all ZIP parts, starting with part 1.'); const count = sources(c.signal).length; if (count !== volume.manifest.parts.length) throw new Error(`This album needs ${volume.manifest.parts.length} ZIP parts. Select them all.`); setManifest(volume.manifest); first.current = blob; }
-    catch (e) { if (!c.signal.aborted) setError(e instanceof Error ? e.message : 'Pixeldrain could not be reached. Download the ZIPs on its website and select them here.'); }
+    try { if (token) { setManifest(await sharedManifest(token, c.signal)); return; } const get = sources(c.signal)[0]; if (!get) throw new Error('Select the Wicked ZIP parts you received.'); const blob = await get(); const volume = await readVolume(blob); c.signal.throwIfAborted(); if (volume.part !== 0) throw new Error('Select all ZIP parts, starting with part 1.'); const count = sources(c.signal).length; if (count !== volume.manifest.parts.length) throw new Error(`This album needs ${volume.manifest.parts.length} ZIP parts. Select them all.`); setManifest(volume.manifest); first.current = blob; }
+    catch (e) { if (!c.signal.aborted) setError(e instanceof Error ? e.message : 'This album could not be loaded. Try again.'); }
     finally { setBusy(false); setStatus(''); }
   };
   useEffect(() => { if (token) void review(); }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
