@@ -9,6 +9,6 @@
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
 
-- Album sharing runs in browser-only event handlers using bounded, uncompressed ZIP volumes; this keeps audio transfers off the app server and avoids recompressing existing MP3s.
+- Album sharing packs bounded, uncompressed ZIP volumes in the browser and streams them through authenticated server routes to the owner's Pixeldrain connector; recipients download through the app, so no one else needs a file-host key.
 - Imported album files are written only to the selected main folder and rolled back on failure; library metadata is added only after all parts pass validation.
-- Third-party share links accept only Pixeldrain file IDs; direct download restrictions fall back to selecting downloaded ZIP files rather than public CORS proxies.
+- Share links carry only an unguessable share ID; parts are served only for shares marked complete, never via public CORS proxies.
